@@ -42,7 +42,10 @@
     margin: 0 auto;
     padding: 40px 16px 64px;
   }
-  h1 { margin: 0 0 4px; font-size: 1.75rem; letter-spacing: -0.01em; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  h1 { margin: 0; font-size: 1.75rem; letter-spacing: -0.01em; }
+  .repo { font-size: 0.9rem; color: var(--accent); text-decoration: none; white-space: nowrap; }
+  .repo:hover { text-decoration: underline; }
   .lede { margin: 0 0 28px; color: var(--muted); }
   form {
     display: flex;
@@ -105,7 +108,10 @@
 </head>
 <body>
 <main>
-  <h1>pw</h1>
+  <header>
+    <h1>pw</h1>
+    <a class="repo" href="https://github.com/adamburr/pw">Source on GitHub →</a>
+  </header>
   <p class="lede">Secure, memorable passphrases built from English phonemes grouped into imaginary words. Generated locally in your browser — nothing is sent anywhere.</p>
 
   <form id="controls">

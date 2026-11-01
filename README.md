@@ -1,7 +1,7 @@
 # pw
 
 Generate secure, memorable passphrases using English phonemes grouped into
-imaginary multi-syllable words, like `Brastoo Flimp Shaynkor`.
+imaginary multi-syllable words, like `BrastooFlimpShaynkor`.
 
 **Web:** https://adamburr.github.io/pw/ — runs entirely in your browser using
 `crypto.getRandomValues`; nothing is sent over the network.

@@ -59,7 +59,7 @@ def generate_passphrase(total_syllables: int = 4) -> str:
     words.append(word)
     syllables_left -= chunk_size
 
-  return " ".join(words)
+  return "".join(words)
 
 
 def main():

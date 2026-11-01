@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pw — Passphrase Generator</title>
+<meta name="description" content="Generate secure, memorable passphrases from English phonemes. Runs entirely in your browser.">
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --text: #1d1d1b;
+    --muted: #6b6b66;
+    --border: #e2e2dd;
+    --accent: #2f6f4f;
+    --accent-text: #ffffff;
+    --hover: #f0f0ec;
+    --flash: #dcefe3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514;
+      --surface: #1e1e1c;
+      --text: #ecece8;
+      --muted: #9a9a94;
+      --border: #33332f;
+      --accent: #6cc196;
+      --accent-text: #0f1a14;
+      --hover: #272724;
+      --flash: #1f3a2b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 40px 16px 64px;
+  }
+  h1 { margin: 0 0 4px; font-size: 1.75rem; letter-spacing: -0.01em; }
+  .lede { margin: 0 0 28px; color: var(--muted); }
+  form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 20px;
+  }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+  select, input, button {
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  input[type=number] { width: 6em; }
+  button {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+    font-weight: 600;
+    padding: 8px 18px;
+    cursor: pointer;
+  }
+  button:focus-visible, select:focus-visible, input:focus-visible, li:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .hint { font-size: 0.85rem; color: var(--muted); margin: 0 0 8px; min-height: 1.3em; }
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    font: 1.05rem/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    transition: background 0.3s;
+  }
+  li:last-child { border-bottom: 0; }
+  li:hover { background: var(--hover); }
+  li.copied { background: var(--flash); }
+  li .tag { font: 0.75rem/1.9 system-ui, sans-serif; color: var(--muted); white-space: nowrap; visibility: hidden; }
+  li:hover .tag, li:focus .tag, li.copied .tag { visibility: visible; }
+  footer { margin-top: 32px; font-size: 0.85rem; color: var(--muted); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>pw</h1>
+  <p class="lede">Secure, memorable passphrases built from English phonemes grouped into imaginary words. Generated locally in your browser — nothing is sent anywhere.</p>
+
+  <form id="controls">
+    <label>Security
+      <select id="security">
+        <option value="low">Low (~33 bits)</option>
+        <option value="medium">Medium (~44 bits)</option>
+        <option value="high" selected>High (~55 bits)</option>
+        <option value="paranoid">Paranoid (~66 bits)</option>
+      </select>
+    </label>
+    <label>Count
+      <input id="count" type="number" min="1" max="200" value="20">
+    </label>
+    <button type="submit">Generate</button>
+  </form>
+
+  <p class="hint" id="hint" aria-live="polite">Click a passphrase to copy it.</p>
+  <ol id="output"></ol>
+
+  <footer>
+    Uses <code>crypto.getRandomValues</code>. Also available as a command-line script:
+    <a href="https://github.com/adamburr/pw">github.com/adamburr/pw</a>. Public domain.
+  </footer>
+</main>
+
+<script>
+  // Curated lists of English phonemes / syllables (kept in sync with pw.py)
+  const ONSET_CONSONANTS = [
+    "b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "n", "p", "r", "s", "t",
+    "v", "w", "y", "z", "ch", "sh", "th", "ph", "br", "bl", "cl", "cr", "dr",
+    "fl", "fr", "gl", "gr", "pl", "pr", "sc", "sk", "sl", "sm", "sn", "sp",
+    "st", "sw", "tr", "wh", "wr"
+  ];
+
+  const NUCLEUS_VOWELS = [
+    "a", "e", "i", "o", "u", "ai", "ay", "ea", "ee", "oo", "ou", "oa"
+  ];
+
+  // Empty strings allow open syllables under uniform selection.
+  const CODA_CONSONANTS = [
+    "", "", "",
+    "b", "d", "f", "g", "k", "l", "m", "n", "p", "r", "s", "t", "x", "z",
+    "nd", "nt", "mp", "st", "nk", "ft", "lt", "lp"
+  ];
+
+  const SECURITY_SYLLABLES = { low: 3, medium: 4, high: 5, paranoid: 6 };
+
+  // Uniform integer in [0, n) from the CSPRNG, using rejection sampling to avoid modulo bias.
+  function randomBelow(n) {
+    const limit = Math.floor(0x100000000 / n) * n;
+    const buf = new Uint32Array(1);
+    do {
+      crypto.getRandomValues(buf);
+    } while (buf[0] >= limit);
+    return buf[0] % n;
+  }
+
+  function choice(list) {
+    return list[randomBelow(list.length)];
+  }
+
+  function generateSyllable() {
+    return choice(ONSET_CONSONANTS) + choice(NUCLEUS_VOWELS) + choice(CODA_CONSONANTS);
+  }
+
+  // Groups syllables into 1-to-3 syllable imaginary words.
+  function generatePassphrase(totalSyllables) {
+    let syllablesLeft = totalSyllables;
+    const words = [];
+    while (syllablesLeft > 0) {
+      const chunkSize = 1 + randomBelow(Math.min(3, syllablesLeft));
+      let word = "";
+      for (let i = 0; i < chunkSize; i++) word += generateSyllable();
+      words.push(word.charAt(0).toUpperCase() + word.slice(1));
+      syllablesLeft -= chunkSize;
+    }
+    return words.join(" ");
+  }
+
+  const form = document.getElementById("controls");
+  const security = document.getElementById("security");
+  const count = document.getElementById("count");
+  const output = document.getElementById("output");
+  const hint = document.getElementById("hint");
+
+  async function copy(li) {
+    const text = li.firstChild.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      li.classList.add("copied");
+      li.lastChild.textContent = "copied";
+      hint.textContent = "Copied to clipboard.";
+      setTimeout(() => {
+        li.classList.remove("copied");
+        li.lastChild.textContent = "copy";
+      }, 1200);
+    } catch {
+      hint.textContent = "Couldn't access the clipboard — select the text to copy it.";
+    }
+  }
+
+  function render() {
+    const syllables = SECURITY_SYLLABLES[security.value];
+    const n = Math.max(1, Math.min(200, parseInt(count.value, 10) || 20));
+    count.value = n;
+    output.replaceChildren();
+    for (let i = 0; i < n; i++) {
+      const li = document.createElement("li");
+      li.tabIndex = 0;
+      const phrase = document.createElement("span");
+      phrase.textContent = generatePassphrase(syllables);
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = "copy";
+      li.append(phrase, tag);
+      li.addEventListener("click", () => copy(li));
+      li.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); copy(li); }
+      });
+      output.append(li);
+    }
+    hint.textContent = "Click a passphrase to copy it.";
+  }
+
+  form.addEventListener("submit", (e) => { e.preventDefault(); render(); });
+  security.addEventListener("change", render);
+  render();
+</script>
+</body>
+</html>

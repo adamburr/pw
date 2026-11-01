@@ -123,7 +123,7 @@
     <button type="submit">Generate</button>
   </form>
 
-  <p class="hint" id="hint" aria-live="polite">Click a passphrase to copy it.</p>
+  <p class="hint" id="hint" aria-live="polite">Click a passphrase to copy it without spaces.</p>
   <ol id="output"></ol>
 
   <footer>
@@ -193,7 +193,7 @@
   const hint = document.getElementById("hint");
 
   async function copy(li) {
-    const text = li.firstChild.textContent;
+    const text = li.firstChild.textContent.replace(/ /g, "");
     try {
       await navigator.clipboard.writeText(text);
       li.classList.add("copied");
@@ -228,7 +228,7 @@
       });
       output.append(li);
     }
-    hint.textContent = "Click a passphrase to copy it.";
+    hint.textContent = "Click a passphrase to copy it without spaces.";
   }
 
   form.addEventListener("submit", (e) => { e.preventDefault(); render(); });

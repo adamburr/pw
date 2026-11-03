@@ -45,14 +45,14 @@ def generate_syllable() -> str:
 
 
 def generate_passphrase(total_syllables: int = 4) -> str:
-  """Generates a secure passphrase by grouping syllables into 1-to-3 syllable imaginary words."""
+  """Generates a secure passphrase by grouping syllables into 1-to-2 syllable imaginary words."""
   rng = secrets.SystemRandom()
   
   syllables_left = total_syllables
   words = []
 
   while syllables_left > 0:
-    max_chunk = min(3, syllables_left)
+    max_chunk = min(2, syllables_left)
     chunk_size = rng.randint(1, max_chunk)
     chunk = [generate_syllable() for _ in range(chunk_size)]
     word = "".join(chunk).capitalize()

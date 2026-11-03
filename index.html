@@ -178,12 +178,12 @@
     return choice(ONSET_CONSONANTS) + choice(NUCLEUS_VOWELS) + choice(CODA_CONSONANTS);
   }
 
-  // Groups syllables into 1-to-3 syllable imaginary words.
+  // Groups syllables into 1-to-2 syllable imaginary words.
   function generatePassphrase(totalSyllables) {
     let syllablesLeft = totalSyllables;
     const words = [];
     while (syllablesLeft > 0) {
-      const chunkSize = 1 + randomBelow(Math.min(3, syllablesLeft));
+      const chunkSize = 1 + randomBelow(Math.min(2, syllablesLeft));
       let word = "";
       for (let i = 0; i < chunkSize; i++) word += generateSyllable();
       words.push(word.charAt(0).toUpperCase() + word.slice(1));

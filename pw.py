@@ -45,8 +45,8 @@ def generate_syllable() -> str:
 
 
 def generate_passphrase(total_syllables: int = 4) -> str:
-  """Generates a secure passphrase by joining syllables in CamelCase."""
-  return "".join(generate_syllable().capitalize() for _ in range(total_syllables))
+  """Generates a secure passphrase by joining lowercase syllables with hyphens."""
+  return "-".join(generate_syllable() for _ in range(total_syllables))
 
 
 def main():
@@ -60,8 +60,8 @@ def main():
 
   parser = argparse.ArgumentParser(
       description=(
-          "Generate secure, memorable passphrases from English phoneme"
-          " syllables joined in CamelCase."
+          "Generate secure, memorable passphrases from lowercase English"
+          " phoneme syllables joined with hyphens."
       )
   )
   parser.add_argument(

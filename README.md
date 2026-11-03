@@ -1,7 +1,7 @@
 # pw
 
-Generate secure, memorable passphrases from English phoneme syllables joined
-in CamelCase, like `BrasTooFlimpShaynKor`.
+Generate secure, memorable passphrases from lowercase English phoneme
+syllables joined with hyphens, like `bras-too-flimp-shayn-kor`.
 
 **Web:** https://adamburr.github.io/pw/ — runs entirely in your browser using
 `crypto.getRandomValues`; nothing is sent over the network.
@@ -22,8 +22,8 @@ in CamelCase, like `BrasTooFlimpShaynKor`.
 
 Each syllable is an onset consonant, a vowel, and an optional coda consonant,
 chosen uniformly with a cryptographically secure RNG (`secrets` in Python,
-`crypto.getRandomValues` in the browser). Each syllable is capitalized and
-the syllables are joined in CamelCase.
+`crypto.getRandomValues` in the browser). The lowercase syllables are then
+joined with hyphens.
 
 The web page (`index.html`) and the script (`pw.py`) share the same phoneme
 lists; keep them in sync when changing either.

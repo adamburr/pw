@@ -112,7 +112,7 @@
     <h1>pw</h1>
     <a class="repo" href="https://github.com/adamburr/pw">Source on GitHub →</a>
   </header>
-  <p class="lede">Secure, memorable passphrases built from English phonemes grouped into imaginary words. Generated locally in your browser — nothing is sent anywhere.</p>
+  <p class="lede">Secure, memorable passphrases built from English phoneme syllables joined in CamelCase. Generated locally in your browser — nothing is sent anywhere.</p>
 
   <form id="controls">
     <label>Security
@@ -178,18 +178,14 @@
     return choice(ONSET_CONSONANTS) + choice(NUCLEUS_VOWELS) + choice(CODA_CONSONANTS);
   }
 
-  // Groups syllables into 1-to-2 syllable imaginary words.
+  // Joins syllables in CamelCase.
   function generatePassphrase(totalSyllables) {
-    let syllablesLeft = totalSyllables;
-    const words = [];
-    while (syllablesLeft > 0) {
-      const chunkSize = 1 + randomBelow(Math.min(2, syllablesLeft));
-      let word = "";
-      for (let i = 0; i < chunkSize; i++) word += generateSyllable();
-      words.push(word.charAt(0).toUpperCase() + word.slice(1));
-      syllablesLeft -= chunkSize;
+    let phrase = "";
+    for (let i = 0; i < totalSyllables; i++) {
+      const syllable = generateSyllable();
+      phrase += syllable.charAt(0).toUpperCase() + syllable.slice(1);
     }
-    return words.join("");
+    return phrase;
   }
 
   const form = document.getElementById("controls");

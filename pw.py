@@ -45,21 +45,8 @@ def generate_syllable() -> str:
 
 
 def generate_passphrase(total_syllables: int = 4) -> str:
-  """Generates a secure passphrase by grouping syllables into 1-to-2 syllable imaginary words."""
-  rng = secrets.SystemRandom()
-  
-  syllables_left = total_syllables
-  words = []
-
-  while syllables_left > 0:
-    max_chunk = min(2, syllables_left)
-    chunk_size = rng.randint(1, max_chunk)
-    chunk = [generate_syllable() for _ in range(chunk_size)]
-    word = "".join(chunk).capitalize()
-    words.append(word)
-    syllables_left -= chunk_size
-
-  return "".join(words)
+  """Generates a secure passphrase by joining syllables in CamelCase."""
+  return "".join(generate_syllable().capitalize() for _ in range(total_syllables))
 
 
 def main():
@@ -73,8 +60,8 @@ def main():
 
   parser = argparse.ArgumentParser(
       description=(
-          "Generate secure, memorable passphrases using English phonemes"
-          " grouped into imaginary multi-syllable words."
+          "Generate secure, memorable passphrases from English phoneme"
+          " syllables joined in CamelCase."
       )
   )
   parser.add_argument(

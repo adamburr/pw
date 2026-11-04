@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Block every network request so generated passphrases can never leave the page. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>pw — Passphrase Generator</title>
 <meta name="description" content="Generate secure, memorable passphrases from English phonemes. Runs entirely in your browser.">
 <style>
@@ -112,7 +114,7 @@
     <h1>pw</h1>
     <a class="repo" href="https://github.com/adamburr/pw">Source on GitHub →</a>
   </header>
-  <p class="lede">Secure, memorable passphrases built from lowercase English phoneme syllables joined with hyphens. Generated locally in your browser — nothing is sent anywhere.</p>
+  <p class="lede">Secure, memorable passphrases built from English phoneme syllables joined in CamelCase, ending in a symbol and two digits. Generated locally in your browser — nothing is sent anywhere.</p>
 
   <form id="controls">
     <label>Security
@@ -158,6 +160,11 @@
     "nd", "nt", "mp", "st", "nk", "ft", "lt", "lp"
   ];
 
+  // Special characters widely accepted by password rules.
+  const SPECIAL_CHARACTERS = ["!", "@", "#", "$", "%", "^", "&", "*"];
+
+  const DIGITS = "0123456789";
+
   const SECURITY_SYLLABLES = { low: 3, medium: 4, high: 5, paranoid: 6 };
 
   // Uniform integer in [0, n) from the CSPRNG, using rejection sampling to avoid modulo bias.
@@ -178,11 +185,20 @@
     return choice(ONSET_CONSONANTS) + choice(NUCLEUS_VOWELS) + choice(CODA_CONSONANTS);
   }
 
-  // Joins lowercase syllables with hyphens.
+  // A special character followed by two digits (~9.6 bits).
+  function generateSymbols() {
+    return choice(SPECIAL_CHARACTERS) + choice(DIGITS) + choice(DIGITS);
+  }
+
+  // Joins syllables in CamelCase, replacing the last syllable with a special
+  // character and two digits.
   function generatePassphrase(totalSyllables) {
-    const syllables = [];
-    for (let i = 0; i < totalSyllables; i++) syllables.push(generateSyllable());
-    return syllables.join("-");
+    let phrase = "";
+    for (let i = 0; i < totalSyllables - 1; i++) {
+      const syllable = generateSyllable();
+      phrase += syllable.charAt(0).toUpperCase() + syllable.slice(1);
+    }
+    return phrase + generateSymbols();
   }
 
   const form = document.getElementById("controls");

@@ -12,7 +12,6 @@ For more information, please refer to <http://unlicense.org/>
 
 import argparse
 import secrets
-import sys
 
 # Curated lists of English phonemes / syllables
 ONSET_CONSONANTS = [
@@ -34,6 +33,11 @@ CODA_CONSONANTS = [
     "nd", "nt", "mp", "st", "nk", "ft", "lt", "lp"
 ]
 
+# Special characters widely accepted by password rules.
+SPECIAL_CHARACTERS = ["!", "@", "#", "$", "%", "^", "&", "*"]
+
+DIGITS = "0123456789"
+
 
 def generate_syllable() -> str:
   """Generates a single lowercase phonetic syllable using uniform selection."""
@@ -44,24 +48,27 @@ def generate_syllable() -> str:
   return onset + nucleus + coda
 
 
+def generate_symbols() -> str:
+  """Generates a special character followed by two digits (~9.6 bits)."""
+  rng = secrets.SystemRandom()
+  return rng.choice(SPECIAL_CHARACTERS) + rng.choice(DIGITS) + rng.choice(DIGITS)
+
+
 def generate_passphrase(total_syllables: int = 4) -> str:
-  """Generates a secure passphrase by joining lowercase syllables with hyphens."""
-  return "-".join(generate_syllable() for _ in range(total_syllables))
+  """Generates a secure passphrase of syllables joined in CamelCase.
+
+  The last syllable is replaced by a special character and two digits.
+  """
+  syllables = [generate_syllable().capitalize() for _ in range(total_syllables - 1)]
+  return "".join(syllables) + generate_symbols()
 
 
 def main():
-  # If run with no arguments, run high security mode by default with 20 passphrases
-  if len(sys.argv) == 1:
-    default_syllables = 5  # high security (~55 bits)
-    default_count = 20
-    for _ in range(default_count):
-      print(generate_passphrase(default_syllables))
-    return
-
   parser = argparse.ArgumentParser(
       description=(
-          "Generate secure, memorable passphrases from lowercase English"
-          " phoneme syllables joined with hyphens."
+          "Generate secure, memorable passphrases from English phoneme"
+          " syllables joined in CamelCase, ending in a special character and"
+          " two digits."
       )
   )
   parser.add_argument(
@@ -76,10 +83,10 @@ def main():
       "--security",
       type=str,
       choices=["low", "medium", "high", "paranoid"],
-      required=True,
+      default="high",
       help=(
           "Security level: low (~33 bits), medium (~44 bits), high (~55"
-          " bits), paranoid (~66 bits)"
+          " bits, default), paranoid (~66 bits)"
       ),
   )
   args = parser.parse_args()

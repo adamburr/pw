@@ -119,10 +119,10 @@
   <form id="controls">
     <label>Security
       <select id="security">
-        <option value="low">Low (~33 bits)</option>
-        <option value="medium">Medium (~44 bits)</option>
-        <option value="high" selected>High (~55 bits)</option>
-        <option value="paranoid">Paranoid (~66 bits)</option>
+        <option value="low">Low (~50 bits)</option>
+        <option value="medium" selected>Medium (~64 bits)</option>
+        <option value="high">High (~77 bits)</option>
+        <option value="paranoid">Paranoid (~91 bits)</option>
       </select>
     </label>
     <label>Count
@@ -165,7 +165,7 @@
 
   const DIGITS = "0123456789";
 
-  const SECURITY_SYLLABLES = { low: 3, medium: 4, high: 5, paranoid: 6 };
+  const SECURITY_SYLLABLES = { low: 4, medium: 5, high: 6, paranoid: 7 };
 
   // Uniform integer in [0, n) from the CSPRNG, using rejection sampling to avoid modulo bias.
   function randomBelow(n) {

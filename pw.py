@@ -83,19 +83,19 @@ def main():
       "--security",
       type=str,
       choices=["low", "medium", "high", "paranoid"],
-      default="high",
+      default="medium",
       help=(
-          "Security level: low (~33 bits), medium (~44 bits), high (~55"
-          " bits, default), paranoid (~66 bits)"
+          "Security level: low (~50 bits), medium (~64 bits, default), high"
+          " (~77 bits), paranoid (~91 bits)"
       ),
   )
   args = parser.parse_args()
 
   security_mapping = {
-      "low": (3, "~33 bits"),
-      "medium": (4, "~44 bits"),
-      "high": (5, "~55 bits"),
-      "paranoid": (6, "~66 bits"),
+      "low": (4, "~50 bits"),
+      "medium": (5, "~64 bits"),
+      "high": (6, "~77 bits"),
+      "paranoid": (7, "~91 bits"),
   }
 
   num_syllables, _ = security_mapping[args.security]

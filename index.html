@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Block every network request so generated passphrases can never leave the page. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<!-- Block every network request so generated passphrases can never leave the page, and run
+     only the inline script and style below. Recompute the hashes after editing either one
+     (see README). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-iZRrMo+R/E0uxA4QYH616+OREo75QILKLqPxis6u2zs='; style-src 'sha256-R3UxdgokLGnWMPm5TgjEWgXBkxU3wmOrHhaWZPBTL8A='; base-uri 'none'; form-action 'none'">
 <title>pw — Passphrase Generator</title>
 <meta name="description" content="Generate secure, memorable passphrases from English phonemes. Runs entirely in your browser.">
 <style>
@@ -119,7 +121,7 @@
   <form id="controls">
     <label>Security
       <select id="security">
-        <option value="low">Low (~50 bits)</option>
+        <option value="low">Low (~50 bits, online accounts only)</option>
         <option value="medium" selected>Medium (~64 bits)</option>
         <option value="high">High (~77 bits)</option>
         <option value="paranoid">Paranoid (~91 bits)</option>
@@ -246,9 +248,14 @@
     hint.textContent = "Click a passphrase to copy it.";
   }
 
-  form.addEventListener("submit", (e) => { e.preventDefault(); render(); });
-  security.addEventListener("change", render);
-  render();
+  // GitHub Pages can't send a frame-ancestors header, so refuse to run inside another site's frame.
+  if (window.top !== window.self) {
+    document.querySelector("main").replaceChildren("Open pw directly at https://adamburr.github.io/pw/");
+  } else {
+    form.addEventListener("submit", (e) => { e.preventDefault(); render(); });
+    security.addEventListener("change", render);
+    render();
+  }
 </script>
 </body>
 </html>

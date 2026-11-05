@@ -28,7 +28,7 @@ NUCLEUS_VOWELS = [
 # Including empty strings directly in the list allows uniform random selection
 # while maintaining a balanced mix of open and closed syllables.
 CODA_CONSONANTS = [
-    "", "", "",  # Empty options to allow open syllables (~30% probability)
+    "", "", "",  # Empty options to allow open syllables (3 of 25, 12% probability)
     "b", "d", "f", "g", "k", "l", "m", "n", "p", "r", "s", "t", "x", "z",
     "nd", "nt", "mp", "st", "nk", "ft", "lt", "lp"
 ]
@@ -85,7 +85,7 @@ def main():
       choices=["low", "medium", "high", "paranoid"],
       default="medium",
       help=(
-          "Security level: low (~50 bits), medium (~64 bits, default), high"
+          "Security level: low (~50 bits, online accounts only), medium (~64 bits, default), high"
           " (~77 bits), paranoid (~91 bits)"
       ),
   )

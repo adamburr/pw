@@ -17,17 +17,25 @@ The defaults are syllables, CamelCase, and the closing symbol and digits.
 Content-Security-Policy blocks every fetch, image, font and connection and
 allows only the page's own inline script and style, pinned by hash, so the
 browser enforces this. It can't stop a tampered copy of the page that drops the
-policy, so if you'd rather not trust the hosted page, check it against the
-source or run it yourself:
+policy, so if you'd rather not trust the hosted page, build it from the source
+yourself and compare, or run your own build. You need
+[Node.js](https://nodejs.org/) 18 or later:
+
+```sh
+git clone https://github.com/adamburr/pw && cd pw && node build.js
+```
 
 ```sh
 # The two hashes match when the live page is exactly the source on main
+shasum -a 256 index.html
 curl -s https://adamburr.github.io/pw/ | shasum -a 256
-curl -s https://raw.githubusercontent.com/adamburr/pw/main/index.html | shasum -a 256
 ```
 
-`index.html` is a single self-contained file, so you can also download it and
-open it from disk; it works offline.
+The page is published from `main` by the
+[Test and deploy](.github/workflows/pages.yml) workflow, so allow a minute or
+two after a push, and the log of each run prints the hash it published.
+`index.html` is a single self-contained file, so you can also open your build
+from disk; it works offline.
 
 Copied passphrases stay on the clipboard, and in clipboard history or sync if
 your system keeps them, until you copy something else.
@@ -92,7 +100,7 @@ the list instead of the first one can cost up to about 4 bits.
 ## Development
 
 All of the generator lives in `pw.js`, which is both the command line and the
-heart of the web page. `index.html` is built, so don't edit it directly:
+heart of the web page. `index.html` is built rather than committed:
 
 | File            | Contents                                                  |
 |-----------------|-----------------------------------------------------------|
@@ -103,7 +111,7 @@ heart of the web page. `index.html` is built, so don't edit it directly:
 | `build.js`      | Builds `index.html` from the four files above             |
 | `test.js`       | Tests                                                     |
 
-After changing any of them, rebuild and test:
+To try a change, rebuild the page and open `index.html`, and run the tests:
 
 ```sh
 node build.js
@@ -115,9 +123,13 @@ node --test
 
 The page's Content-Security-Policy blocks loading files and pins its inline
 `<script>` and `<style>` by SHA-256, so `build.js` copies `pw.js`, `words.txt`
-and `web/page.js` into one inline script and fills in both hashes. The tests
-fail if `index.html` is out of date, and `node build.js --check` checks just
-that.
+and `web/page.js` into one inline script and fills in both hashes.
+
+On every push and pull request, the [Test and deploy](.github/workflows/pages.yml)
+workflow runs the tests and builds the page; on `main` it then publishes the
+page to GitHub Pages, so nothing needs rebuilding by hand. This needs the
+repository's Pages source set to GitHub Actions (Settings → Pages → Build and
+deployment → Source).
 
 ## Security
 

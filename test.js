@@ -100,9 +100,17 @@ test("passphrase formats", () => {
   }
 });
 
-test("index.html is up to date and its script parses", () => {
+test("the built page's script parses and its CSP pins the script and style", () => {
   const html = build();
-  assert.equal(fs.readFileSync(path.join(__dirname, "index.html"), "utf8"), html,
-    "index.html is out of date: run node build.js");
-  new vm.Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]);
+  const crypto = require("node:crypto");
+  const sha256 = (text) => crypto.createHash("sha256").update(text).digest("base64");
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+  new vm.Script(script);
+  const csp = html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/)[1];
+  assert.match(csp, /^default-src 'none';/);
+  assert.ok(csp.includes(`script-src 'sha256-${sha256(script)}';`));
+  assert.ok(csp.includes(`style-src 'sha256-${sha256(style)}';`));
+  assert.equal((html.match(/<script/g) || []).length, 1);
+  assert.equal((html.match(/<style/g) || []).length, 1);
 });

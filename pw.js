@@ -213,7 +213,6 @@ function main(argv) {
   const { parseArgs } = require("node:util");
   const fs = require("node:fs");
   const path = require("node:path");
-  if (!globalThis.crypto) globalThis.crypto = require("node:crypto").webcrypto;
 
   const fail = (message) => {
     process.stderr.write(`pw: ${message} (see --help)\n`);
@@ -272,6 +271,8 @@ function main(argv) {
 }
 
 if (typeof module !== "undefined" && typeof require !== "undefined") {
+  // Node 18 has no global crypto.
+  if (!globalThis.crypto) globalThis.crypto = require("node:crypto").webcrypto;
   module.exports = {
     ONSET_CONSONANTS, NUCLEUS_VOWELS, CODA_CONSONANTS, SPECIAL_CHARACTERS, DIGITS,
     SECURITY_BITS, SYLLABLE_BITS, SUFFIX_BITS, entropy, isSyllable, canMerge,

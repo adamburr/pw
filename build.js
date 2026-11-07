@@ -4,7 +4,7 @@
 // SHA-256 in the page's Content-Security-Policy.
 //
 //   node build.js           write index.html
-//   node build.js --check   exit 1 if index.html is out of date
+//   node build.js FILE      write FILE instead (the deploy workflow uses this)
 
 "use strict";
 
@@ -62,19 +62,10 @@ function build() {
 }
 
 if (require.main === module) {
-  const html = build();
-  const out = path.join(__dirname, "index.html");
-  if (process.argv.includes("--check")) {
-    const current = fs.existsSync(out) ? fs.readFileSync(out, "utf8") : "";
-    if (current !== html) {
-      console.error("index.html is out of date: run node build.js");
-      process.exit(1);
-    }
-    console.log("index.html is up to date");
-  } else {
-    fs.writeFileSync(out, html);
-    console.log("wrote index.html");
-  }
+  const out = process.argv[2] || path.join(__dirname, "index.html");
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, build());
+  console.log(`wrote ${out}`);
 }
 
 module.exports = { build };

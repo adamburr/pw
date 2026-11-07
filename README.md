@@ -34,17 +34,21 @@ your system keeps them, until you copy something else.
 
 ## Command line
 
+The command line runs the same code as the page, with
+[Node.js](https://nodejs.org/) 18 or later and no dependencies:
+
 ```sh
-./pw.py                          # 20 passphrases at medium security
-./pw.py -s paranoid -n 5         # 5 passphrases at paranoid security
-./pw.py -m merged                # merge syllables into two-syllable words
-./pw.py -m words                 # dictionary words instead of syllables
-./pw.py -m words -t dashes       # lowercase words joined with dashes
-./pw.py --no-suffix              # leave off the symbol and digits
-./pw.py -m words -v              # also print the strength to stderr
+./pw.js                          # 20 passphrases at medium security
+./pw.js -s paranoid -n 5         # 5 passphrases at paranoid security
+./pw.js -m merged                # merge syllables into two-syllable words
+./pw.js -m words                 # dictionary words instead of syllables
+./pw.js -m words -t dashes       # lowercase words joined with dashes
+./pw.js --no-suffix              # leave off the symbol and digits
+./pw.js -m words -v              # also print the strength to stderr
 ```
 
-Word mode reads `words.txt` from the same directory as `pw.py`.
+Word mode reads `words.txt` from the same directory as `pw.js`. On Windows, run
+`node pw.js` instead of `./pw.js`.
 
 Each security level sets a minimum strength, and pw uses as many syllables or
 words as it takes to reach it. Merging doesn't change the count or the strength.
@@ -63,8 +67,8 @@ Each syllable is an onset consonant, a vowel, and an optional coda consonant.
 Each word comes from the `3esl` list in Alan Beale's
 [12dicts](http://wordlist.aspell.net/12dicts/) (words found in at least three
 of five learner's dictionaries), limited to the 14,631 lowercase words of 3 to 9
-letters. Every choice is uniform from a cryptographically secure RNG (`secrets`
-in Python, `crypto.getRandomValues` in the browser). In CamelCase each part is
+letters. Every choice is uniform from a cryptographically secure RNG
+(`crypto.getRandomValues`). In CamelCase each part is
 capitalized; with dashes the parts stay lowercase. The optional suffix is one of
 `!@#$%^&*` and two digits, so the passphrase has the uppercase letter, digit
 and special character many sites require. Without it, some sites will reject
@@ -85,24 +89,35 @@ how passphrases are generated. The three empty codas produce the same text, so
 they count as one more likely choice rather than three. Picking a favorite from
 the list instead of the first one can cost up to about 4 bits.
 
-The web page (`index.html`) and the script (`pw.py`) share the same phoneme
-lists, security levels, merge rules and word list; keep them in sync when
-changing either. The page carries its own copy of `words.txt`, because its
-Content-Security-Policy blocks loading files. This prints `True` when the copies
-match:
+## Development
+
+All of the generator lives in `pw.js`, which is both the command line and the
+heart of the web page. `index.html` is built, so don't edit it directly:
+
+| File            | Contents                                                  |
+|-----------------|-----------------------------------------------------------|
+| `pw.js`         | Phoneme lists, security levels, merge rules, generation, and the command line |
+| `words.txt`     | The word list, one word per line                          |
+| `web/page.html` | The page's HTML and CSS                                   |
+| `web/page.js`   | The page's controls                                       |
+| `build.js`      | Builds `index.html` from the four files above             |
+| `test.js`       | Tests                                                     |
+
+After changing any of them, rebuild and test:
 
 ```sh
-python3 -c 'import re;h=open("index.html").read();print(re.search(r"const WORDS = `(.*?)`",h,re.S)[1].split()==open("words.txt").read().split())'
+node build.js
 ```
-
-The page's Content-Security-Policy pins its inline `<script>` and `<style>` by
-SHA-256, so after editing either one, print the new hashes and paste them into
-the policy (the browser console also reports the expected hash when one is
-blocked):
 
 ```sh
-python3 -c 'import re,hashlib,base64;h=open("index.html").read();[print(t,base64.b64encode(hashlib.sha256(b.encode()).digest()).decode()) for t in ("script","style") for b in re.findall(f"<{t}>(.*?)</{t}>",h,re.S)]'
+node --test
 ```
+
+The page's Content-Security-Policy blocks loading files and pins its inline
+`<script>` and `<style>` by SHA-256, so `build.js` copies `pw.js`, `words.txt`
+and `web/page.js` into one inline script and fills in both hashes. The tests
+fail if `index.html` is out of date, and `node build.js --check` checks just
+that.
 
 ## Security
 

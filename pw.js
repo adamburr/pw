@@ -201,8 +201,8 @@ Options:
                        paranoid (90 bits)
   -m, --method M       fantasy (default), made-up words of one or two
                        syllables; or words, common English words from words.txt
-  -t, --style S        camel (default) or dashes, lowercase joined with dashes
-      --no-suffix      Leave off the closing special character and two digits
+  -t, --style S        dashes (default), lowercase joined with dashes; or camel
+      --suffix         End with a special character and two digits
   -v, --verbose        Print the passphrase strength to standard error
   -h, --help           Show this help
 `;
@@ -224,8 +224,8 @@ function main(argv) {
         count: { type: "string", short: "n", default: "20" },
         security: { type: "string", short: "s", default: "medium" },
         method: { type: "string", short: "m", default: "fantasy" },
-        style: { type: "string", short: "t", default: "camel" },
-        "no-suffix": { type: "boolean", default: false },
+        style: { type: "string", short: "t", default: "dashes" },
+        suffix: { type: "boolean", default: false },
         verbose: { type: "boolean", short: "v", default: false },
         help: { type: "boolean", short: "h", default: false },
       },
@@ -257,7 +257,7 @@ function main(argv) {
     if (!isValidWordList(words)) fail(`${file} must hold distinct lowercase words`);
   }
 
-  const options = { ...values, suffix: !values["no-suffix"] };
+  const options = values;
   if (values.verbose) {
     const info = partInfo(options.method, words);
     const n = partsNeeded(SECURITY_BITS[options.security], info.bits, options.suffix);

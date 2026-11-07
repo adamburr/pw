@@ -37,7 +37,8 @@ function render() {
   const info = partInfo(options.method, WORDS);
   const n = partsNeeded(SECURITY_BITS[options.security], info.bits, options.suffix);
   strength.textContent = describeStrength(n, info, options.suffix).text +
-    (options.suffix ? "" : ". Some sites require a digit or symbol.");
+    (options.style === "camel" && options.suffix ? "" :
+      ". For sites that require a capital letter, digit and symbol, choose CamelCase and an ending.");
 
   const total = Math.max(1, Math.min(200, parseInt(count.value, 10) || 20));
   count.value = total;

@@ -1,15 +1,15 @@
 # pw
 
 Generate secure, memorable passphrases from fantasy words made of English
-syllables, or from dictionary words, joined in CamelCase or with dashes, and
+syllables, or from dictionary words, joined with dashes or in CamelCase, and
 optionally ending in a special character and two digits:
 
-| Built from       | CamelCase                    | Dashes                           |
-|------------------|------------------------------|----------------------------------|
-| Fantasy words    | `BrastooFlimpShayn#47`       | `brastoo-flimp-shayn-#47`        |
-| Dictionary words | `BitterLinearFixSecondly&39` | `bitter-linear-fix-secondly-&39` |
+| Built from       | Dashes (default)                   | CamelCase with the suffix    |
+|------------------|------------------------------------|------------------------------|
+| Fantasy words    | `brastoo-flimp-shayn-wex`          | `BrastooFlimpShayn#47`       |
+| Dictionary words | `bitter-linear-fix-secondly-orbit` | `BitterLinearFixSecondly&39` |
 
-The defaults are fantasy words, CamelCase, and the closing symbol and digits.
+The defaults are fantasy words, lowercase with dashes, and no suffix.
 
 **Web:** https://adamburr.github.io/pw/ — runs entirely in your browser using
 `crypto.getRandomValues`; nothing is sent over the network. The page's
@@ -48,8 +48,8 @@ The command line runs the same code as the page, with
 ./pw.js                          # 20 passphrases at medium security
 ./pw.js -s paranoid -n 5         # 5 passphrases at paranoid security
 ./pw.js -m words                 # dictionary words instead of fantasy words
-./pw.js -m words -t dashes       # lowercase words joined with dashes
-./pw.js --no-suffix              # leave off the symbol and digits
+./pw.js -t camel                 # CamelCase instead of dashes
+./pw.js -t camel --suffix        # end with a symbol and two digits too
 ./pw.js -m words -v              # also print the strength to stderr
 ```
 
@@ -74,11 +74,10 @@ an optional coda consonant. Each dictionary word comes from the `3esl` list in A
 [12dicts](http://wordlist.aspell.net/12dicts/) (words found in at least three
 of five learner's dictionaries), limited to the 14,631 lowercase words of 3 to 9
 letters. Every choice is uniform from a cryptographically secure RNG
-(`crypto.getRandomValues`). In CamelCase each part is
-capitalized; with dashes the parts stay lowercase. The optional suffix is one of
-`!@#$%^&*` and two digits, so the passphrase has the uppercase letter, digit
-and special character many sites require. Without it, some sites will reject
-the passphrase.
+(`crypto.getRandomValues`). With dashes the parts stay lowercase; in CamelCase
+each part is capitalized. The optional suffix is one of `!@#$%^&*` and two
+digits. Some sites require an uppercase letter, a digit and a special
+character; for those, use CamelCase with the suffix.
 
 Neighboring syllables are joined into two-syllable fantasy words where they're
 easy to say together: an open syllable is followed by anything but `w` or `y`, and a

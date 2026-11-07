@@ -1,0 +1,172 @@
+<!doctype html>
+<!-- GENERATED_NOTE -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Block every network request so generated passphrases can never leave the page, and run
+     only the inline script and style below. build.js fills in their hashes. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-SCRIPT_HASH'; style-src 'sha256-STYLE_HASH'; base-uri 'none'; form-action 'none'">
+<title>pw — Passphrase Generator</title>
+<meta name="description" content="Generate secure, memorable passphrases from English phonemes or dictionary words. Runs entirely in your browser.">
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --text: #1d1d1b;
+    --muted: #6b6b66;
+    --border: #e2e2dd;
+    --accent: #2f6f4f;
+    --accent-text: #ffffff;
+    --hover: #f0f0ec;
+    --flash: #dcefe3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514;
+      --surface: #1e1e1c;
+      --text: #ecece8;
+      --muted: #9a9a94;
+      --border: #33332f;
+      --accent: #6cc196;
+      --accent-text: #0f1a14;
+      --hover: #272724;
+      --flash: #1f3a2b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 40px 16px 64px;
+  }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  h1 { margin: 0; font-size: 1.75rem; letter-spacing: -0.01em; }
+  .repo { font-size: 0.9rem; color: var(--accent); text-decoration: none; white-space: nowrap; }
+  .repo:hover { text-decoration: underline; }
+  .lede { margin: 0 0 28px; color: var(--muted); }
+  form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 20px;
+  }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+  select, input, button {
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  input[type=number] { width: 6em; }
+  button {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+    font-weight: 600;
+    padding: 8px 18px;
+    cursor: pointer;
+  }
+  button:focus-visible, select:focus-visible, input:focus-visible, li:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .strength { margin: 0 0 4px; font-size: 0.9rem; }
+  .hint { font-size: 0.85rem; color: var(--muted); margin: 0 0 8px; min-height: 1.3em; }
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    font: 1.05rem/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    transition: background 0.3s;
+  }
+  li:last-child { border-bottom: 0; }
+  li:hover { background: var(--hover); }
+  li.copied { background: var(--flash); }
+  li .tag { font: 0.75rem/1.9 system-ui, sans-serif; color: var(--muted); white-space: nowrap; visibility: hidden; }
+  li:hover .tag, li:focus .tag, li.copied .tag { visibility: visible; }
+  footer { margin-top: 32px; font-size: 0.85rem; color: var(--muted); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>pw</h1>
+    <a class="repo" href="https://github.com/adamburr/pw">Source on GitHub →</a>
+  </header>
+  <p class="lede">Secure, memorable passphrases built from made-up English syllables, optionally merged into two-syllable words, or from dictionary words, joined in CamelCase or with dashes, optionally ending in a symbol and two digits. Generated locally in your browser — nothing is sent anywhere.</p>
+
+  <form id="controls">
+    <label>Security
+      <select id="security">
+        <option value="low">Low (online accounts only)</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+        <option value="paranoid">Paranoid</option>
+      </select>
+    </label>
+    <label>Built from
+      <select id="method">
+        <option value="syllables" selected>Syllables</option>
+        <option value="merged">Two-syllable words</option>
+        <option value="words">Dictionary words</option>
+      </select>
+    </label>
+    <label>Style
+      <select id="style">
+        <option value="camel" selected>CamelCase</option>
+        <option value="dashes">lower-dashes</option>
+      </select>
+    </label>
+    <label>Ending
+      <select id="suffix">
+        <option value="on" selected>Symbol + 2 digits</option>
+        <option value="off">None</option>
+      </select>
+    </label>
+    <label>Count
+      <input id="count" type="number" min="1" max="200" value="20">
+    </label>
+    <button type="submit">Generate</button>
+  </form>
+
+  <p class="strength" id="strength"></p>
+
+  <p class="hint" id="hint" aria-live="polite">Click a passphrase to copy it.</p>
+  <ol id="output"></ol>
+
+  <footer>
+    Uses <code>crypto.getRandomValues</code>. Also available as a command-line script:
+    <a href="https://github.com/adamburr/pw">github.com/adamburr/pw</a>. Public domain. Word list from
+    Alan Beale's <a href="http://wordlist.aspell.net/12dicts/">12dicts</a>, also public domain.
+  </footer>
+</main>
+
+<script>
+/* build.js puts pw.js, words.txt and web/page.js here */
+</script>
+</body>
+</html>

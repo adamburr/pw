@@ -13,6 +13,7 @@ serves.
 
 ## Verifying the web page
 
-The hosted page is built from `index.html` on `main`. See the
-[README](README.md) for how to check the live page against the source or run it
-offline.
+The hosted page is built from the source on `main` and published by the
+[Test and deploy](.github/workflows/pages.yml) workflow. See the
+[README](README.md) for how to build it yourself, check the live page against
+your build, or run it offline.

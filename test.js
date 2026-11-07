@@ -30,7 +30,7 @@ test("strength per part", () => {
 
 test("parts per security level match the README table", () => {
   const expected = {
-    // syllables + suffix, syllables, words + suffix, words
+    // fantasy + suffix, fantasy, words + suffix, words
     low: [3, 4, 3, 4],
     medium: [4, 5, 4, 5],
     high: [5, 6, 5, 6],
@@ -38,7 +38,7 @@ test("parts per security level match the README table", () => {
   };
   for (const [level, counts] of Object.entries(expected)) {
     const actual = [];
-    for (const method of ["syllables", "words"]) {
+    for (const method of ["fantasy", "words"]) {
       for (const suffix of [true, false]) {
         const info = pw.partInfo(method, words);
         const n = pw.partsNeeded(pw.SECURITY_BITS[level], info.bits, suffix);
@@ -88,7 +88,7 @@ test("passphrase formats", () => {
     camel: { true: /^([A-Z][a-z]+)+[!@#$%^&*]\d\d$/, false: /^([A-Z][a-z]+)+$/ },
     dashes: { true: /^[a-z]+(-[a-z]+)*-[!@#$%^&*]\d\d$/, false: /^[a-z]+(-[a-z]+)*$/ },
   };
-  for (const method of ["syllables", "merged", "words"]) {
+  for (const method of ["fantasy", "words"]) {
     for (const style of ["camel", "dashes"]) {
       for (const suffix of [true, false]) {
         for (const security of Object.keys(pw.SECURITY_BITS)) {

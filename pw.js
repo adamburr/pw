@@ -139,8 +139,8 @@ function isValidWordList(words) {
     words.every((w) => /^[a-z]+$/.test(w));
 }
 
-// What a passphrase is built from, given the method ("syllables", "merged" or
-// "words") and the word list: the bits each part carries and the parts' name.
+// What a passphrase is built from, given the method ("fantasy" or "words") and
+// the word list: the bits each part carries and the parts' name.
 function partInfo(method, words) {
   return method === "words"
     ? { bits: entropy(words), unit: "word" }
@@ -160,16 +160,15 @@ function describeStrength(n, info, suffix) {
   return { bits, text };
 }
 
-// Generates n lowercase parts: syllables, syllables merged into two-syllable
-// words, or words from the list.
+// Generates lowercase parts from n syllables or words: fantasy words (syllables,
+// merged into two-syllable words where they read well) or words from the list.
 function generateParts(method, n, words) {
   if (method === "words") return Array.from({ length: n }, () => choice(words));
-  const syllables = Array.from({ length: n }, generateSyllable);
-  return method === "merged" ? mergeSyllables(syllables) : syllables.map((s) => s.join(""));
+  return mergeSyllables(Array.from({ length: n }, generateSyllable));
 }
 
-// Joins lowercase parts in CamelCase ("camel", like BrasTooFlimp) or with dashes
-// ("dashes", like bras-too-flimp), optionally appending a special character and
+// Joins lowercase parts in CamelCase ("camel", like BrastooFlimp) or with dashes
+// ("dashes", like brastoo-flimp), optionally appending a special character and
 // two digits (after a dash in the dashes style).
 function joinPassphrase(parts, style, suffix) {
   if (suffix) parts = [...parts, generateSymbols()];
@@ -191,8 +190,8 @@ function generatePassphrase(options, words) {
 
 const USAGE = `Usage: pw.js [options]
 
-Generate secure, memorable passphrases from phoneme syllables, made-up
-two-syllable words or dictionary words, joined in CamelCase or with dashes,
+Generate secure, memorable passphrases from fantasy words made of English
+syllables, or from dictionary words, joined in CamelCase or with dashes,
 optionally ending in a special character and two digits.
 
 Options:
@@ -200,9 +199,8 @@ Options:
   -s, --security LVL   Minimum strength: low (50 bits, online accounts only),
                        medium (63 bits, default), high (77 bits),
                        paranoid (90 bits)
-  -m, --method M       syllables (default); merged, joining syllables into
-                       two-syllable words where they're easy to say; or words,
-                       common English words from words.txt
+  -m, --method M       fantasy (default), made-up words of one or two
+                       syllables; or words, common English words from words.txt
   -t, --style S        camel (default) or dashes, lowercase joined with dashes
       --no-suffix      Leave off the closing special character and two digits
   -v, --verbose        Print the passphrase strength to standard error
@@ -225,7 +223,7 @@ function main(argv) {
       options: {
         count: { type: "string", short: "n", default: "20" },
         security: { type: "string", short: "s", default: "medium" },
-        method: { type: "string", short: "m", default: "syllables" },
+        method: { type: "string", short: "m", default: "fantasy" },
         style: { type: "string", short: "t", default: "camel" },
         "no-suffix": { type: "boolean", default: false },
         verbose: { type: "boolean", short: "v", default: false },
@@ -245,7 +243,7 @@ function main(argv) {
     if (!allowed.includes(value)) fail(`--${name} must be one of ${allowed.join(", ")}, not ${value}`);
   };
   oneOf("security", values.security, Object.keys(SECURITY_BITS));
-  oneOf("method", values.method, ["syllables", "merged", "words"]);
+  oneOf("method", values.method, ["fantasy", "words"]);
   oneOf("style", values.style, ["camel", "dashes"]);
 
   let words = [];

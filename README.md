@@ -4,10 +4,11 @@ Generate secure, memorable passphrases from made-up English syllables or
 dictionary words, joined in CamelCase or with dashes, and optionally ending in a
 special character and two digits:
 
-| Built from | CamelCase                               | Dashes                                      |
-|------------|-----------------------------------------|---------------------------------------------|
-| Syllables  | `BrasTooFlimpShayn#47`                  | `bras-too-flimp-shayn#47`                   |
-| Words      | `CoastlineHappilyRoverClobberRemote#37` | `coastline-happily-rover-clobber-remote#37` |
+| Built from          | CamelCase                       | Dashes                              |
+|---------------------|---------------------------------|-------------------------------------|
+| Syllables           | `BraStooFlimpShayn#47`          | `bra-stoo-flimp-shayn-#47`          |
+| Two-syllable words  | `BrastooFlimpShayn#47`          | `brastoo-flimp-shayn-#47`           |
+| Dictionary words    | `BitterLinearFixSecondly&39`    | `bitter-linear-fix-secondly-&39`    |
 
 The defaults are syllables, CamelCase, and the closing symbol and digits.
 
@@ -36,6 +37,7 @@ your system keeps them, until you copy something else.
 ```sh
 ./pw.py                          # 20 passphrases at medium security
 ./pw.py -s paranoid -n 5         # 5 passphrases at paranoid security
+./pw.py -m merged                # merge syllables into two-syllable words
 ./pw.py -m words                 # dictionary words instead of syllables
 ./pw.py -m words -t dashes       # lowercase words joined with dashes
 ./pw.py --no-suffix              # leave off the symbol and digits
@@ -45,35 +47,47 @@ your system keeps them, until you copy something else.
 Word mode reads `words.txt` from the same directory as `pw.py`.
 
 Each security level sets a minimum strength, and pw uses as many syllables or
-words as it takes to reach it:
+words as it takes to reach it. Merging doesn't change the count or the strength.
 
-| Level      | Minimum   | Syllables + suffix | Syllables     | Words + suffix | Words          |
-|------------|-----------|--------------------|---------------|----------------|----------------|
-| `low`¹     | 50 bits   | 3 (~51 bits)       | 4 (~55 bits)  | 4 (~61 bits)   | 4 (~52 bits)   |
-| `medium`   | 64 bits   | 4 (~65 bits)       | 5 (~69 bits)  | 5 (~74 bits)   | 5 (~65 bits)   |
-| `high`     | 77 bits   | 5 (~78 bits)       | 6 (~82 bits)  | 6 (~87 bits)   | 6 (~78 bits)   |
-| `paranoid` | 91 bits   | 6 (~92 bits)       | 7 (~96 bits)  | 7 (~100 bits)  | 8 (~103 bits)  |
+| Level      | Minimum | Syllables + suffix | Syllables    | Words + suffix | Words        |
+|------------|---------|--------------------|--------------|----------------|--------------|
+| `low`¹     | 50 bits | 3 (~50 bits)       | 4 (~54 bits) | 3 (~51 bits)   | 4 (~55 bits) |
+| `medium`   | 63 bits | 4 (~64 bits)       | 5 (~68 bits) | 4 (~65 bits)   | 5 (~69 bits) |
+| `high`     | 77 bits | 5 (~77 bits)       | 6 (~81 bits) | 5 (~79 bits)   | 6 (~83 bits) |
+| `paranoid` | 90 bits | 6 (~91 bits)       | 7 (~95 bits) | 6 (~93 bits)   | 7 (~97 bits) |
 
 ¹ Use `low` only for online accounts, where the site limits guessing. If a
 site's password database leaks, ~50 bits can be cracked offline.
 
 Each syllable is an onset consonant, a vowel, and an optional coda consonant.
-Each word comes from [EFF's long wordlist](https://www.eff.org/dice), less its
-four hyphenated words, leaving 7,772. Every choice is uniform from a
-cryptographically secure RNG (`secrets` in Python, `crypto.getRandomValues` in
-the browser). In CamelCase each part is capitalized; with dashes the parts stay
-lowercase. The optional suffix is one of `!@#$%^&*` and two digits, so the
-passphrase has the uppercase letter, digit and special character many sites
-require. Without it, some sites will reject the passphrase.
+Each word comes from the `3esl` list in Alan Beale's
+[12dicts](http://wordlist.aspell.net/12dicts/) (words found in at least three
+of five learner's dictionaries), limited to the 14,631 lowercase words of 3 to 9
+letters. Every choice is uniform from a cryptographically secure RNG (`secrets`
+in Python, `crypto.getRandomValues` in the browser). In CamelCase each part is
+capitalized; with dashes the parts stay lowercase. The optional suffix is one of
+`!@#$%^&*` and two digits, so the passphrase has the uppercase letter, digit
+and special character many sites require. Without it, some sites will reject
+the passphrase.
 
-Each syllable carries about 13.7 bits, each word about 12.9 bits, and the
+With two-syllable words, neighboring syllables are joined where they're easy to
+say together: an open syllable is followed by anything but `w` or `y`, and a
+closed one meets the next with at most two consonants (three after `l`, `m`,
+`n`, `r` or `s`) and no `h`, `w` or `y`. A pair is also joined only if a reader
+splitting the word naturally, giving the second syllable as many consonants as
+it can take, gets back the same two syllables (`ba`+`stoo` becomes `bastoo`,
+but `bas`+`too` stays apart). So every passphrase still has exactly one reading
+and keeps its full strength. About 40% of neighboring pairs merge.
+
+Each syllable carries about 13.5 bits, each word about 13.8 bits, and the
 closing symbol and digits about 9.6 bits, assuming an attacker knows exactly
-how passphrases are generated. Picking a favorite from the list instead of the
-first one can cost up to about 4 bits.
+how passphrases are generated. The three empty codas produce the same text, so
+they count as one more likely choice rather than three. Picking a favorite from
+the list instead of the first one can cost up to about 4 bits.
 
 The web page (`index.html`) and the script (`pw.py`) share the same phoneme
-lists, security levels and word list; keep them in sync when changing either.
-The page carries its own copy of `words.txt`, because its
+lists, security levels, merge rules and word list; keep them in sync when
+changing either. The page carries its own copy of `words.txt`, because its
 Content-Security-Policy blocks loading files. This prints `True` when the copies
 match:
 
@@ -96,8 +110,6 @@ See [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## License
 
-Public domain — see [LICENSE](LICENSE) — except the word list. `words.txt`, and
-the copy of it in `index.html`, is EFF's long wordlist, © Electronic Frontier
-Foundation, used under
-[CC BY 3.0 US](https://creativecommons.org/licenses/by/3.0/us/) with its four
-hyphenated words removed.
+Public domain — see [LICENSE](LICENSE). The word list comes from Alan Beale's
+12dicts, which he released to the public domain, asking only for
+acknowledgment.

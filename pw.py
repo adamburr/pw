@@ -8,14 +8,13 @@ binary, for any purpose, commercial or non-commercial, and by any
 means.
 
 For more information, please refer to <http://unlicense.org/>
-
-The word list in words.txt is not covered by this dedication; see README.md.
 """
 
 import argparse
 import math
 import secrets
 import sys
+from collections import Counter
 from pathlib import Path
 
 # Curated lists of English phonemes / syllables
@@ -43,16 +42,31 @@ SPECIAL_CHARACTERS = ["!", "@", "#", "$", "%", "^", "&", "*"]
 
 DIGITS = "0123456789"
 
-# EFF's long wordlist without its four hyphenated words, one per line.
+# Alan Beale's public-domain 12dicts 3esl list, limited to lowercase words of 3
+# to 9 letters, one per line.
 WORDS_FILE = Path(__file__).resolve().with_name("words.txt")
 
-SYLLABLE_BITS = math.log2(
-    len(ONSET_CONSONANTS) * len(NUCLEUS_VOWELS) * len(CODA_CONSONANTS)
+CODA_SET = set(CODA_CONSONANTS)
+
+
+def entropy(items) -> float:
+  """Shannon entropy in bits of a uniform choice from items.
+
+  Repeated items (like the empty codas) count once, weighted by how often they
+  appear, since they produce the same text.
+  """
+  counts = Counter(items).values()
+  return -sum(c / len(items) * math.log2(c / len(items)) for c in counts)
+
+
+# A syllable's text determines its onset, nucleus and coda, so their entropies add.
+SYLLABLE_BITS = (
+    entropy(ONSET_CONSONANTS) + entropy(NUCLEUS_VOWELS) + entropy(CODA_CONSONANTS)
 )
-SUFFIX_BITS = math.log2(len(SPECIAL_CHARACTERS) * len(DIGITS) ** 2)
+SUFFIX_BITS = entropy(SPECIAL_CHARACTERS) + 2 * entropy(DIGITS)
 
 # Minimum strength in bits for each security level.
-SECURITY_BITS = {"low": 50, "medium": 64, "high": 77, "paranoid": 91}
+SECURITY_BITS = {"low": 50, "medium": 63, "high": 77, "paranoid": 90}
 
 _rng = secrets.SystemRandom()
 
@@ -70,12 +84,62 @@ def load_words() -> list[str]:
   return words
 
 
-def generate_syllable() -> str:
-  """Generates a single lowercase phonetic syllable using uniform selection."""
+def generate_syllable() -> tuple[str, str, str]:
+  """Generates a lowercase phonetic syllable as (onset, nucleus, coda)."""
   onset = _rng.choice(ONSET_CONSONANTS)
   nucleus = _rng.choice(NUCLEUS_VOWELS)
   coda = _rng.choice(CODA_CONSONANTS)
-  return onset + nucleus + coda
+  return onset, nucleus, coda
+
+
+def is_syllable(text: str) -> bool:
+  """Returns whether text is exactly one onset, nucleus and coda."""
+  for onset in ONSET_CONSONANTS:
+    if text.startswith(onset):
+      rest = text[len(onset):]
+      for nucleus in NUCLEUS_VOWELS:
+        if rest.startswith(nucleus) and rest[len(nucleus):] in CODA_SET:
+          return True
+  return False
+
+
+def can_merge(first: tuple[str, str, str], second: tuple[str, str, str]) -> bool:
+  """Returns whether two syllables read well, and unambiguously, as one word.
+
+  The consonants where they meet must be easy to say: after an open syllable
+  the next must not start with w or y, which would blend into the vowel. After
+  a closed one the next must not start with h, which would read as ch, sh, th
+  or ph, or with w or y, and at most two consonants can meet, or three after a
+  single l, m, n, r or s, which flow into the next (al-bree, ban-stoo). The word must also split back into the same
+  two syllables when its second syllable takes as many consonants as it can,
+  the way readers naturally break it up (ba-stoo, not bas-too). Every merged
+  word then has exactly one reading, so merging never weakens a passphrase.
+  """
+  coda, onset = first[2], second[0]
+  if coda:
+    flowing = coda in ("l", "m", "n", "r", "s")
+    if len(coda) + len(onset) > (3 if flowing else 2) or onset[0] in "hwy":
+      return False
+  elif onset[0] in "wy":
+    return False
+  word = "".join(first + second)
+  return not any(
+      is_syllable(word[:i]) and is_syllable(word[i:])
+      for i in range(1, len("".join(first)))
+  )
+
+
+def merge_syllables(syllables: list[tuple[str, str, str]]) -> list[str]:
+  """Joins neighboring syllables into two-syllable words where can_merge allows."""
+  words, i = [], 0
+  while i < len(syllables):
+    if i + 1 < len(syllables) and can_merge(syllables[i], syllables[i + 1]):
+      words.append("".join(syllables[i] + syllables[i + 1]))
+      i += 2
+    else:
+      words.append("".join(syllables[i]))
+      i += 1
+  return words
 
 
 def generate_symbols() -> str:
@@ -98,20 +162,21 @@ def generate_passphrase(
 
   style is "camel" (capitalized and joined, like BrasTooFlimp) or "dashes"
   (lowercase joined with hyphens, like bras-too-flimp). With suffix, a special
-  character and two digits are appended.
+  character and two digits are appended, after a dash in the dashes style.
   """
+  if suffix:
+    parts = parts + [generate_symbols()]
   if style == "camel":
-    phrase = "".join(p.capitalize() for p in parts)
-  else:
-    phrase = "-".join(parts)
-  return phrase + (generate_symbols() if suffix else "")
+    return "".join(p.capitalize() for p in parts)
+  return "-".join(parts)
 
 
 def main():
   parser = argparse.ArgumentParser(
       description=(
           "Generate secure, memorable passphrases from English phoneme"
-          " syllables or dictionary words, joined in CamelCase or with"
+          " syllables, made-up two-syllable words or dictionary words, joined"
+          " in CamelCase or with"
           " dashes, optionally ending in a special character and two digits."
       )
   )
@@ -128,18 +193,19 @@ def main():
       choices=list(SECURITY_BITS),
       default="medium",
       help=(
-          "Minimum strength: low (50 bits, online accounts only), medium (64"
-          " bits, default), high (77 bits), paranoid (91 bits)"
+          "Minimum strength: low (50 bits, online accounts only), medium (63"
+          " bits, default), high (77 bits), paranoid (90 bits)"
       ),
   )
   parser.add_argument(
       "-m",
       "--method",
-      choices=["syllables", "words"],
+      choices=["syllables", "merged", "words"],
       default="syllables",
       help=(
-          "Build from made-up phoneme syllables (default) or words from the"
-          " EFF long wordlist"
+          "Build from phoneme syllables (default), syllables merged into"
+          " two-syllable words where they're easy to say, or common English"
+          " words"
       ),
   )
   parser.add_argument(
@@ -166,21 +232,27 @@ def main():
   if args.method == "words":
     words = load_words()
     part_bits = math.log2(len(words))
-    make_part = lambda: _rng.choice(words)
   else:
     part_bits = SYLLABLE_BITS
-    make_part = generate_syllable
 
   num_parts = parts_needed(SECURITY_BITS[args.security], part_bits, args.suffix)
 
   if args.verbose:
     bits = num_parts * part_bits + (SUFFIX_BITS if args.suffix else 0)
-    unit = args.method if num_parts > 1 else args.method[:-1]
+    unit = "word" if args.method == "words" else "syllable"
+    unit += "s" if num_parts > 1 else ""
     ending = " + symbol and digits" if args.suffix else ""
     print(f"{num_parts} {unit}{ending}: ~{bits:.0f} bits", file=sys.stderr)
 
   for _ in range(args.count):
-    parts = [make_part() for _ in range(num_parts)]
+    if args.method == "words":
+      parts = [_rng.choice(words) for _ in range(num_parts)]
+    else:
+      syllables = [generate_syllable() for _ in range(num_parts)]
+      if args.method == "merged":
+        parts = merge_syllables(syllables)
+      else:
+        parts = ["".join(s) for s in syllables]
     print(generate_passphrase(parts, args.style, args.suffix))
 
 

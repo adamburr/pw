@@ -5,7 +5,8 @@ const form = document.getElementById("controls");
 const security = document.getElementById("security");
 const method = document.getElementById("method");
 const style = document.getElementById("style");
-const suffix = document.getElementById("suffix");
+const symbol = document.getElementById("symbol");
+const digits = document.getElementById("digits");
 const count = document.getElementById("count");
 const strength = document.getElementById("strength");
 const output = document.getElementById("output");
@@ -32,13 +33,12 @@ function render() {
     security: security.value,
     method: method.value,
     style: style.value,
-    suffix: suffix.value === "on",
+    symbol: symbol.checked,
+    digits: digits.checked,
   };
-  const info = partInfo(options.method, WORDS);
-  const n = partsNeeded(SECURITY_BITS[options.security], info.bits, options.suffix);
-  strength.textContent = describeStrength(n, info, options.suffix).text +
-    (options.style === "camel" && options.suffix ? "" :
-      ". For sites that require a capital letter, digit and symbol, choose CamelCase and an ending.");
+  strength.textContent = planPassphrase(options, WORDS).text +
+    (options.style === "camel" && options.symbol && options.digits ? "" :
+      ". For sites that require a capital letter, digit and symbol, choose CamelCase, Symbols and Digits.");
 
   const total = Math.max(1, Math.min(200, parseInt(count.value, 10) || 20));
   count.value = total;
@@ -66,6 +66,6 @@ if (window.top !== window.self) {
   document.querySelector("main").replaceChildren("Open pw directly at https://adamburr.github.io/pw/");
 } else {
   form.addEventListener("submit", (e) => { e.preventDefault(); render(); });
-  for (const control of [security, method, style, suffix]) control.addEventListener("change", render);
+  for (const control of [security, method, style, symbol, digits]) control.addEventListener("change", render);
   render();
 }

@@ -1,15 +1,15 @@
 # pw
 
-Generate secure, memorable passphrases from fantasy words made of English
-syllables, or from dictionary words, joined with dashes or in CamelCase, and
-optionally ending in a special character and two digits:
+Generate secure, memorable passphrases from dictionary words, or from phonetic
+words made of English syllables, joined with dashes or in CamelCase, and
+optionally ending in special characters, digits, or both:
 
-| Built from       | Dashes (default)                   | CamelCase with the suffix    |
-|------------------|------------------------------------|------------------------------|
-| Fantasy words    | `brastoo-flimp-shayn-wex`          | `BrastooFlimpShayn#47`       |
-| Dictionary words | `bitter-linear-fix-secondly-orbit` | `BitterLinearFixSecondly&39` |
+| Words      | Dashes (default)                   | CamelCase with symbol and digits |
+|------------|------------------------------------|----------------------------------|
+| Dictionary | `bitter-linear-fix-secondly-orbit` | `BitterLinearFixSecondly&395`    |
+| Phonetic   | `brastoo-flimp-shayn-wex`          | `BrastooFlimpShayn#478`          |
 
-The defaults are fantasy words, lowercase with dashes, and no suffix.
+The defaults are dictionary words, lowercase with dashes, and no ending.
 
 **Web:** https://adamburr.github.io/pw/ — runs entirely in your browser using
 `crypto.getRandomValues`; nothing is sent over the network. The page's
@@ -47,39 +47,51 @@ The command line runs the same code as the page, with
 ```sh
 ./pw.js                          # 20 passphrases at medium security
 ./pw.js -s paranoid -n 5         # 5 passphrases at paranoid security
-./pw.js -m words                 # dictionary words instead of fantasy words
+./pw.js -m phonetic              # phonetic words instead of dictionary words
 ./pw.js -t camel                 # CamelCase instead of dashes
-./pw.js -t camel --suffix        # end with a symbol and two digits too
-./pw.js -m words -v              # also print the strength to stderr
+./pw.js --symbol                 # end with special characters
+./pw.js --digits                 # end with digits
+./pw.js -t camel --suffix        # end with both, same as --symbol --digits
+./pw.js -m phonetic -v           # also print the strength to stderr
 ```
 
-Word mode reads `words.txt` from the same directory as `pw.js`. On Windows, run
+Dictionary mode reads `words.txt` from the same directory as `pw.js`. On Windows, run
 `node pw.js` instead of `./pw.js`.
 
-Each security level sets a minimum strength, and pw uses as many syllables (for
-fantasy words) or dictionary words as it takes to reach it:
+Each security level sets a minimum strength, and pw uses as many dictionary
+words or syllables (for phonetic words) as it takes to reach it:
 
-| Level      | Minimum | Fantasy + suffix | Fantasy      | Dictionary + suffix | Dictionary   |
-|------------|---------|------------------|--------------|---------------------|--------------|
-| `low`¹     | 50 bits | 3 (~50 bits)     | 4 (~54 bits) | 3 (~51 bits)        | 4 (~55 bits) |
-| `medium`   | 63 bits | 4 (~64 bits)     | 5 (~68 bits) | 4 (~65 bits)        | 5 (~69 bits) |
-| `high`     | 77 bits | 5 (~77 bits)     | 6 (~81 bits) | 5 (~79 bits)        | 6 (~83 bits) |
-| `paranoid` | 90 bits | 6 (~91 bits)     | 7 (~95 bits) | 6 (~93 bits)        | 7 (~97 bits) |
+| Level      | Minimum | Dictionary   | Dictionary + ending | Phonetic     | Phonetic + ending |
+|------------|---------|--------------|---------------------|--------------|-------------------|
+| `low`¹     | 50 bits | 4 (~55 bits) | 3 (~54–57 bits)     | 4 (~54 bits) | 3 (~54–56 bits)   |
+| `medium`   | 63 bits | 5 (~69 bits) | 4 (~68–70 bits)     | 5 (~68 bits) | 4 (~67–69 bits)   |
+| `high`     | 77 bits | 6 (~83 bits) | 5 (~82–84 bits)     | 6 (~81 bits) | 5 (~81–83 bits)   |
+| `paranoid` | 90 bits | 7 (~97 bits) | 6 (~96–98 bits)     | 7 (~95 bits) | 6 (~94–96 bits)   |
+
+An ending carries about as much as one word or syllable, so it takes the place
+of one:
+
+| Ending              | Example | Strength   |
+|---------------------|---------|------------|
+| Symbols only        | `#&!*^` | 15 bits    |
+| Digits only         | `4071`  | ~13.3 bits |
+| Symbols and digits  | `&395`  | ~13 bits   |
 
 ¹ Use `low` only for online accounts, where the site limits guessing. If a
 site's password database leaks, ~50 bits can be cracked offline.
 
-Fantasy words are built from syllables, each an onset consonant, a vowel, and
+Phonetic words are built from syllables, each an onset consonant, a vowel, and
 an optional coda consonant. Each dictionary word comes from the `3esl` list in Alan Beale's
 [12dicts](http://wordlist.aspell.net/12dicts/) (words found in at least three
 of five learner's dictionaries), limited to the 14,631 lowercase words of 3 to 9
 letters. Every choice is uniform from a cryptographically secure RNG
 (`crypto.getRandomValues`). With dashes the parts stay lowercase; in CamelCase
-each part is capitalized. The optional suffix is one of `!@#$%^&*` and two
-digits. Some sites require an uppercase letter, a digit and a special
-character; for those, use CamelCase with the suffix.
+each part is capitalized. The optional ending is some of `!@#$%^&*`, some
+digits, or both, in that order; pw picks how many of each so the ending is as
+close as it can get to the strength of one word or syllable. Some sites require an uppercase letter, a digit
+and a special character; for those, use CamelCase with both.
 
-Neighboring syllables are joined into two-syllable fantasy words where they're
+Neighboring syllables are joined into two-syllable phonetic words where they're
 easy to say together: an open syllable is followed by anything but `w` or `y`, and a
 closed one meets the next with at most two consonants (three after `l`, `m`,
 `n`, `r` or `s`) and no `h`, `w` or `y`. A pair is also joined only if a reader
@@ -89,9 +101,9 @@ but `bas`+`too` stays apart). So every passphrase has exactly one reading, and
 joining syllables never weakens it. About 40% of neighboring pairs join; the
 rest stay one-syllable words.
 
-Each syllable carries about 13.5 bits, each word about 13.8 bits, and the
-closing symbol and digits about 9.6 bits, assuming an attacker knows exactly
-how passphrases are generated. The three empty codas produce the same text, so
+Each syllable carries about 13.5 bits, each dictionary word about 13.8 bits,
+each closing symbol 3 bits and each digit about 3.3 bits, assuming an attacker
+knows exactly how passphrases are generated. The three empty codas produce the same text, so
 they count as one more likely choice rather than three. Picking a favorite from
 the list instead of the first one can cost up to about 4 bits.
 

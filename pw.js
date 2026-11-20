@@ -61,15 +61,17 @@ const SYLLABLE_BITS = entropy(ONSET_CONSONANTS) + entropy(NUCLEUS_VOWELS) + entr
 const SYMBOL_BITS = entropy(SPECIAL_CHARACTERS);
 const DIGIT_BITS = entropy([...DIGITS]);
 
-// The optional endings: a 4-digit number, which takes the place of one word or
-// syllable (~13.3 bits, about as strong as one), and a single special character
-// (3 bits) at the very end.
-const NUMBER_DIGITS = 4;
-const NUMBER_BITS = NUMBER_DIGITS * DIGIT_BITS;
+// The optional endings: a number that takes the place of one word or syllable,
+// and a single special character (3 bits) at the very end. The number has 4
+// digits (~13.3 bits) on its own, or 3 (~10 bits) with the symbol, so either
+// way the ending is about as strong as one word or syllable.
+function numberDigits(options) {
+  return options.digits ? (options.symbol ? 3 : 4) : 0;
+}
 
 // The bits the endings options asks for add.
 function endingBits(options) {
-  return (options.digits ? NUMBER_BITS : 0) + (options.symbol ? SYMBOL_BITS : 0);
+  return numberDigits(options) * DIGIT_BITS + (options.symbol ? SYMBOL_BITS : 0);
 }
 
 // Uniform integer in [0, n) from the CSPRNG, using rejection sampling to avoid modulo bias.
@@ -91,10 +93,10 @@ function generateSyllable() {
   return [choice(ONSET_CONSONANTS), choice(NUCLEUS_VOWELS), choice(CODA_CONSONANTS)];
 }
 
-// A 4-digit number, leading zeros included.
-function generateNumber() {
+// A number of the given digits, leading zeros included.
+function generateNumber(digits) {
   let number = "";
-  for (let i = 0; i < NUMBER_DIGITS; i++) number += choice(DIGITS);
+  for (let i = 0; i < digits; i++) number += choice(DIGITS);
   return number;
 }
 
@@ -170,7 +172,7 @@ function planPassphrase(options, words) {
   const endBits = endingBits(options);
   const n = Math.max(1, Math.ceil((SECURITY_BITS[options.security] - endBits) / info.bits));
   const bits = n * info.bits + endBits;
-  const ending = (options.digits ? ` + ${NUMBER_DIGITS} digits` : "") + (options.symbol ? " + symbol" : "");
+  const ending = (options.digits ? ` + ${numberDigits(options)} digits` : "") + (options.symbol ? " + symbol" : "");
   const text = `${n} ${info.unit}${n > 1 ? "s" : ""}${ending}: ~${Math.round(bits)} bits of entropy`;
   return { n, bits, text };
 }
@@ -198,7 +200,7 @@ function joinPassphrase(parts, style, symbol = "") {
 function generatePassphrase(options, words) {
   const { n } = planPassphrase(options, words);
   const parts = generateParts(options.method, n, words);
-  if (options.digits) parts.push(generateNumber());
+  if (options.digits) parts.push(generateNumber(numberDigits(options)));
   return joinPassphrase(parts, options.style, options.symbol ? choice(SPECIAL_CHARACTERS) : "");
 }
 
@@ -209,7 +211,7 @@ const USAGE = `Usage: pw.js [options]
 
 Generate secure, memorable passphrases from dictionary words, or from phonetic
 words made of English syllables, joined with dashes or in CamelCase, optionally
-ending in a 4-digit number, a special character, or both.
+ending in a number, a special character, or both.
 
 Options:
   -n, --count N        Number of passphrases to generate (default: 20)
@@ -221,7 +223,7 @@ Options:
                        syllables
   -t, --style S        dashes (default), lowercase joined with dashes; or camel
       --digits         End with a 4-digit number, which takes the place of one
-                       word or syllable
+                       word or syllable (3 digits with --symbol)
       --symbol         End with a special character (after the digits, if any)
       --suffix         Same as --digits --symbol
   -v, --verbose        Print the passphrase strength to standard error
@@ -302,7 +304,7 @@ if (typeof module !== "undefined" && typeof require !== "undefined") {
   if (!globalThis.crypto) globalThis.crypto = require("node:crypto").webcrypto;
   module.exports = {
     ONSET_CONSONANTS, NUCLEUS_VOWELS, CODA_CONSONANTS, SPECIAL_CHARACTERS, DIGITS,
-    SECURITY_BITS, SYLLABLE_BITS, SYMBOL_BITS, DIGIT_BITS, NUMBER_BITS, entropy, endingBits,
+    SECURITY_BITS, SYLLABLE_BITS, SYMBOL_BITS, DIGIT_BITS, entropy, numberDigits, endingBits,
     isSyllable, canMerge, mergeSyllables, isValidWordList, partInfo, planPassphrase,
     generateSyllable, generateNumber, generateParts,
     joinPassphrase, generatePassphrase,

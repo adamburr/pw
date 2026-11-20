@@ -25,7 +25,9 @@ test("strength per part", () => {
   assert.ok(Math.abs(pw.SYLLABLE_BITS - 13.5305) < 1e-4);
   assert.equal(pw.SYMBOL_BITS, 3);
   assert.ok(Math.abs(pw.DIGIT_BITS - 3.3219) < 1e-4);
-  assert.ok(Math.abs(pw.NUMBER_BITS - 13.2877) < 1e-4);
+  assert.ok(Math.abs(pw.endingBits({ digits: true }) - 13.2877) < 1e-4);
+  assert.ok(Math.abs(pw.endingBits({ digits: true, symbol: true }) - 12.9658) < 1e-4);
+  assert.equal(pw.endingBits({ symbol: true }), 3);
   assert.ok(pw.isValidWordList(words));
   assert.ok(Math.abs(pw.partInfo("dictionary", words).bits - Math.log2(words.length)) < 1e-9);
 });
@@ -86,7 +88,7 @@ test("passphrase formats", () => {
   for (const method of ["phonetic", "dictionary"]) {
     for (const style of ["camel", "dashes"]) {
       for (const [symbol, digits] of endings) {
-        const number = digits ? (style === "dashes" ? "-" : "") + "\\d{4}" : "";
+        const number = digits ? (style === "dashes" ? "-" : "") + (symbol ? "\\d{3}" : "\\d{4}") : "";
         const format = new RegExp(`^${body[style]}${number}${symbol ? "[!@#$%^&*]" : ""}$`);
         for (const security of Object.keys(pw.SECURITY_BITS)) {
           const phrase = pw.generatePassphrase({ security, method, style, symbol, digits }, words);
@@ -106,7 +108,7 @@ test("command line", () => {
   all(run("-m", "phonetic", "--symbol"), /^[a-z]+(-[a-z]+)*[!@#$%^&*]$/);
   all(run("--digits"), /^[a-z]+(-[a-z]+){3}-\d{4}$/);
   all(run("--digits", "-t", "camel"), /^([A-Z][a-z]+){4}\d{4}$/);
-  all(run("--suffix", "-t", "camel"), /^([A-Z][a-z]+){4}\d{4}[!@#$%^&*]$/);
+  all(run("--suffix", "-t", "camel"), /^([A-Z][a-z]+){4}\d{3}[!@#$%^&*]$/);
   all(run("-m", "fantasy"), /^[a-z]+(-[a-z]+)*$/);                  // old name still works
   for (const line of run("-m", "words")) assert.ok(line.split("-").every((w) => words.includes(w)));
 });

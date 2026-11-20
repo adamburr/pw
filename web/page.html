@@ -68,6 +68,11 @@
     padding: 8px 10px;
   }
   input[type=number] { width: 6em; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; margin-bottom: 4px; font-size: 0.85rem; color: var(--muted); }
+  .checks { display: flex; gap: 16px; padding: 7px 0; }
+  label.check { flex-direction: row; align-items: center; gap: 6px; font-size: 1rem; color: var(--text); cursor: pointer; }
+  input[type=checkbox] { width: 1rem; height: 1rem; margin: 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
   button {
     background: var(--accent);
     color: var(--accent-text);
@@ -117,7 +122,7 @@
     <h1>pw</h1>
     <a class="repo" href="https://github.com/adamburr/pw">Source on GitHub →</a>
   </header>
-  <p class="lede">Secure, memorable passphrases built from fantasy words made of English syllables, or from dictionary words, joined with dashes or in CamelCase, optionally ending in a symbol and two digits. Generated locally in your browser — nothing is sent anywhere.</p>
+  <p class="lede">Secure, memorable passphrases built from dictionary words, or from phonetic words made of English syllables, joined with dashes or in CamelCase, optionally ending in a number, a symbol, or both. Generated locally in your browser — nothing is sent anywhere.</p>
 
   <form id="controls">
     <label>Security
@@ -128,10 +133,10 @@
         <option value="paranoid">Paranoid</option>
       </select>
     </label>
-    <label>Built from
+    <label>Words
       <select id="method">
-        <option value="words">Dictionary words</option>
-        <option value="fantasy" selected>Fantasy words</option>
+        <option value="dictionary" selected>Dictionary</option>
+        <option value="phonetic">Phonetic</option>
       </select>
     </label>
     <label>Style
@@ -140,12 +145,13 @@
         <option value="camel">CamelCase</option>
       </select>
     </label>
-    <label>Ending
-      <select id="suffix">
-        <option value="off" selected>None</option>
-        <option value="on">Symbol + 2 digits</option>
-      </select>
-    </label>
+    <fieldset>
+      <legend>Ending</legend>
+      <div class="checks">
+        <label class="check"><input id="digits" type="checkbox"> Digits</label>
+        <label class="check"><input id="symbol" type="checkbox"> Symbol</label>
+      </div>
+    </fieldset>
     <label>Count
       <input id="count" type="number" min="1" max="200" value="20">
     </label>

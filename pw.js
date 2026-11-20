@@ -58,7 +58,19 @@ function entropy(items) {
 
 // A syllable's text determines its onset, nucleus and coda, so their entropies add.
 const SYLLABLE_BITS = entropy(ONSET_CONSONANTS) + entropy(NUCLEUS_VOWELS) + entropy(CODA_CONSONANTS);
-const SUFFIX_BITS = entropy(SPECIAL_CHARACTERS) + 2 * entropy([...DIGITS]);
+const SYMBOL_BITS = entropy(SPECIAL_CHARACTERS);
+const DIGIT_BITS = entropy([...DIGITS]);
+
+// The optional endings: a 4-digit number, which takes the place of one word or
+// syllable (~13.3 bits, about as strong as one), and a single special character
+// (3 bits) at the very end.
+const NUMBER_DIGITS = 4;
+const NUMBER_BITS = NUMBER_DIGITS * DIGIT_BITS;
+
+// The bits the endings options asks for add.
+function endingBits(options) {
+  return (options.digits ? NUMBER_BITS : 0) + (options.symbol ? SYMBOL_BITS : 0);
+}
 
 // Uniform integer in [0, n) from the CSPRNG, using rejection sampling to avoid modulo bias.
 function randomBelow(n) {
@@ -79,9 +91,11 @@ function generateSyllable() {
   return [choice(ONSET_CONSONANTS), choice(NUCLEUS_VOWELS), choice(CODA_CONSONANTS)];
 }
 
-// A special character followed by two digits (~9.6 bits).
-function generateSymbols() {
-  return choice(SPECIAL_CHARACTERS) + choice(DIGITS) + choice(DIGITS);
+// A 4-digit number, leading zeros included.
+function generateNumber() {
+  let number = "";
+  for (let i = 0; i < NUMBER_DIGITS; i++) number += choice(DIGITS);
+  return number;
 }
 
 // Whether text is exactly one onset, nucleus and coda.
@@ -139,50 +153,53 @@ function isValidWordList(words) {
     words.every((w) => /^[a-z]+$/.test(w));
 }
 
-// What a passphrase is built from, given the method ("fantasy" or "words") and
-// the word list: the bits each part carries and the parts' name.
+// What a passphrase is built from, given the method ("dictionary" or
+// "phonetic") and the word list: the bits each part carries and the parts' name.
 function partInfo(method, words) {
-  return method === "words"
+  return method === "dictionary"
     ? { bits: entropy(words), unit: "word" }
     : { bits: SYLLABLE_BITS, unit: "syllable" };
 }
 
-// How many syllables or words reach minBits.
-function partsNeeded(minBits, partBits, suffix) {
-  return Math.max(1, Math.ceil((minBits - (suffix ? SUFFIX_BITS : 0)) / partBits));
+// The shape of a passphrase for options (see generatePassphrase): how many
+// syllables or words (n), with the endings options asks for, reach the
+// security level's minimum, the strength in bits, and a description like
+// "4 syllables + 4 digits + symbol: ~70 bits of entropy".
+function planPassphrase(options, words) {
+  const info = partInfo(options.method, words);
+  const endBits = endingBits(options);
+  const n = Math.max(1, Math.ceil((SECURITY_BITS[options.security] - endBits) / info.bits));
+  const bits = n * info.bits + endBits;
+  const ending = (options.digits ? ` + ${NUMBER_DIGITS} digits` : "") + (options.symbol ? " + symbol" : "");
+  const text = `${n} ${info.unit}${n > 1 ? "s" : ""}${ending}: ~${Math.round(bits)} bits of entropy`;
+  return { n, bits, text };
 }
 
-// The strength in bits of n parts, and a description like
-// "4 syllables + symbol and digits: ~64 bits".
-function describeStrength(n, info, suffix) {
-  const bits = n * info.bits + (suffix ? SUFFIX_BITS : 0);
-  const text = `${n} ${info.unit}${n > 1 ? "s" : ""}${suffix ? " + symbol and digits" : ""}: ~${Math.round(bits)} bits`;
-  return { bits, text };
-}
-
-// Generates lowercase parts from n syllables or words: fantasy words (syllables,
-// merged into two-syllable words where they read well) or words from the list.
+// Generates lowercase parts from n syllables or words: phonetic words
+// (syllables, merged into two-syllable words where they read well) or
+// dictionary words from the list.
 function generateParts(method, n, words) {
-  if (method === "words") return Array.from({ length: n }, () => choice(words));
+  if (method === "dictionary") return Array.from({ length: n }, () => choice(words));
   return mergeSyllables(Array.from({ length: n }, generateSyllable));
 }
 
 // Joins lowercase parts in CamelCase ("camel", like BrastooFlimp) or with dashes
-// ("dashes", like brastoo-flimp), optionally appending a special character and
-// two digits (after a dash in the dashes style).
-function joinPassphrase(parts, style, suffix) {
-  if (suffix) parts = [...parts, generateSymbols()];
-  return style === "camel"
+// ("dashes", like brastoo-flimp), then appends symbol (if any) with no dash.
+// A number can be one of the parts.
+function joinPassphrase(parts, style, symbol = "") {
+  return (style === "camel"
     ? parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join("")
-    : parts.join("-");
+    : parts.join("-")) + symbol;
 }
 
-// Generates one passphrase. options: security, method, style and suffix, as on
-// the command line; words is the word list, needed only for the words method.
+// Generates one passphrase. options: security, method, style, symbol and
+// digits, as on the command line; words is the word list, needed only for the
+// dictionary method.
 function generatePassphrase(options, words) {
-  const info = partInfo(options.method, words);
-  const n = partsNeeded(SECURITY_BITS[options.security], info.bits, options.suffix);
-  return joinPassphrase(generateParts(options.method, n, words), options.style, options.suffix);
+  const { n } = planPassphrase(options, words);
+  const parts = generateParts(options.method, n, words);
+  if (options.digits) parts.push(generateNumber());
+  return joinPassphrase(parts, options.style, options.symbol ? choice(SPECIAL_CHARACTERS) : "");
 }
 
 // ---------------------------------------------------------------------------
@@ -190,19 +207,23 @@ function generatePassphrase(options, words) {
 
 const USAGE = `Usage: pw.js [options]
 
-Generate secure, memorable passphrases from fantasy words made of English
-syllables, or from dictionary words, joined in CamelCase or with dashes,
-optionally ending in a special character and two digits.
+Generate secure, memorable passphrases from dictionary words, or from phonetic
+words made of English syllables, joined with dashes or in CamelCase, optionally
+ending in a 4-digit number, a special character, or both.
 
 Options:
   -n, --count N        Number of passphrases to generate (default: 20)
   -s, --security LVL   Minimum strength: low (50 bits, online accounts only),
                        medium (63 bits, default), high (77 bits),
                        paranoid (90 bits)
-  -m, --method M       fantasy (default), made-up words of one or two
-                       syllables; or words, common English words from words.txt
+  -m, --method M       dictionary (default), common English words from
+                       words.txt; or phonetic, made-up words of one or two
+                       syllables
   -t, --style S        dashes (default), lowercase joined with dashes; or camel
-      --suffix         End with a special character and two digits
+      --digits         End with a 4-digit number, which takes the place of one
+                       word or syllable
+      --symbol         End with a special character (after the digits, if any)
+      --suffix         Same as --digits --symbol
   -v, --verbose        Print the passphrase strength to standard error
   -h, --help           Show this help
 `;
@@ -223,8 +244,10 @@ function main(argv) {
       options: {
         count: { type: "string", short: "n", default: "20" },
         security: { type: "string", short: "s", default: "medium" },
-        method: { type: "string", short: "m", default: "fantasy" },
+        method: { type: "string", short: "m", default: "dictionary" },
         style: { type: "string", short: "t", default: "dashes" },
+        symbol: { type: "boolean", default: false },
+        digits: { type: "boolean", default: false },
         suffix: { type: "boolean", default: false },
         verbose: { type: "boolean", short: "v", default: false },
         help: { type: "boolean", short: "h", default: false },
@@ -242,12 +265,21 @@ function main(argv) {
   const oneOf = (name, value, allowed) => {
     if (!allowed.includes(value)) fail(`--${name} must be one of ${allowed.join(", ")}, not ${value}`);
   };
+  // The method's names before dictionary and phonetic.
+  const method = { words: "dictionary", fantasy: "phonetic" }[values.method] || values.method;
   oneOf("security", values.security, Object.keys(SECURITY_BITS));
-  oneOf("method", values.method, ["fantasy", "words"]);
+  oneOf("method", method, ["dictionary", "phonetic"]);
   oneOf("style", values.style, ["camel", "dashes"]);
+  const options = {
+    security: values.security,
+    method,
+    style: values.style,
+    symbol: values.symbol || values.suffix,
+    digits: values.digits || values.suffix,
+  };
 
   let words = [];
-  if (values.method === "words") {
+  if (options.method === "dictionary") {
     const file = path.join(__dirname, "words.txt");
     try {
       words = fs.readFileSync(file, "utf8").split(/\s+/).filter(Boolean);
@@ -257,11 +289,8 @@ function main(argv) {
     if (!isValidWordList(words)) fail(`${file} must hold distinct lowercase words`);
   }
 
-  const options = values;
   if (values.verbose) {
-    const info = partInfo(options.method, words);
-    const n = partsNeeded(SECURITY_BITS[options.security], info.bits, options.suffix);
-    process.stderr.write(describeStrength(n, info, options.suffix).text + "\n");
+    process.stderr.write(planPassphrase(options, words).text + "\n");
   }
   for (let i = 0; i < count; i++) {
     process.stdout.write(generatePassphrase(options, words) + "\n");
@@ -273,9 +302,10 @@ if (typeof module !== "undefined" && typeof require !== "undefined") {
   if (!globalThis.crypto) globalThis.crypto = require("node:crypto").webcrypto;
   module.exports = {
     ONSET_CONSONANTS, NUCLEUS_VOWELS, CODA_CONSONANTS, SPECIAL_CHARACTERS, DIGITS,
-    SECURITY_BITS, SYLLABLE_BITS, SUFFIX_BITS, entropy, isSyllable, canMerge,
-    mergeSyllables, isValidWordList, partInfo, partsNeeded, describeStrength,
-    generateSyllable, generateParts, joinPassphrase, generatePassphrase,
+    SECURITY_BITS, SYLLABLE_BITS, SYMBOL_BITS, DIGIT_BITS, NUMBER_BITS, entropy, endingBits,
+    isSyllable, canMerge, mergeSyllables, isValidWordList, partInfo, planPassphrase,
+    generateSyllable, generateNumber, generateParts,
+    joinPassphrase, generatePassphrase,
   };
   if (require.main === module) main(process.argv.slice(2));
 }

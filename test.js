@@ -23,30 +23,27 @@ function twoSyllableSplits(text) {
 
 test("strength per part", () => {
   assert.ok(Math.abs(pw.SYLLABLE_BITS - 13.5305) < 1e-4);
-  assert.ok(Math.abs(pw.SUFFIX_BITS - 9.6439) < 1e-4);
+  assert.equal(pw.SYMBOL_BITS, 3);
+  assert.ok(Math.abs(pw.DIGIT_BITS - 3.3219) < 1e-4);
+  assert.ok(Math.abs(pw.NUMBER_BITS - 13.2877) < 1e-4);
   assert.ok(pw.isValidWordList(words));
-  assert.ok(Math.abs(pw.partInfo("words", words).bits - Math.log2(words.length)) < 1e-9);
+  assert.ok(Math.abs(pw.partInfo("dictionary", words).bits - Math.log2(words.length)) < 1e-9);
 });
 
 test("parts per security level match the README table", () => {
-  const expected = {
-    // fantasy + suffix, fantasy, words + suffix, words
-    low: [3, 4, 3, 4],
-    medium: [4, 5, 4, 5],
-    high: [5, 6, 5, 6],
-    paranoid: [6, 7, 6, 7],
-  };
-  for (const [level, counts] of Object.entries(expected)) {
-    const actual = [];
-    for (const method of ["fantasy", "words"]) {
-      for (const suffix of [true, false]) {
-        const info = pw.partInfo(method, words);
-        const n = pw.partsNeeded(pw.SECURITY_BITS[level], info.bits, suffix);
-        actual.push(n);
-        assert.ok(pw.describeStrength(n, info, suffix).bits >= pw.SECURITY_BITS[level]);
-      }
+  // For each method: no ending, then symbol only, digits only, and both. The
+  // digits replace one part; the symbol alone never does.
+  const endings = [[false, false], [true, false], [false, true], [true, true]];
+  const expected = { low: [4, 4, 3, 3], medium: [5, 5, 4, 4], high: [6, 6, 5, 5], paranoid: [7, 7, 6, 6] };
+  for (const [security, counts] of Object.entries(expected)) {
+    for (const method of ["phonetic", "dictionary"]) {
+      const actual = endings.map(([symbol, digits]) => {
+        const plan = pw.planPassphrase({ security, method, symbol, digits }, words);
+        assert.ok(plan.bits >= pw.SECURITY_BITS[security]);
+        return plan.n;
+      });
+      assert.deepEqual(actual, counts, `${security} ${method}`);
     }
-    assert.deepEqual(actual, counts, level);
   }
 });
 
@@ -84,20 +81,34 @@ test("merge rules", () => {
 });
 
 test("passphrase formats", () => {
-  const formats = {
-    camel: { true: /^([A-Z][a-z]+)+[!@#$%^&*]\d\d$/, false: /^([A-Z][a-z]+)+$/ },
-    dashes: { true: /^[a-z]+(-[a-z]+)*-[!@#$%^&*]\d\d$/, false: /^[a-z]+(-[a-z]+)*$/ },
-  };
-  for (const method of ["fantasy", "words"]) {
+  const body = { camel: "([A-Z][a-z]+)+", dashes: "[a-z]+(-[a-z]+)*" };
+  const endings = [[true, true], [true, false], [false, true], [false, false]];
+  for (const method of ["phonetic", "dictionary"]) {
     for (const style of ["camel", "dashes"]) {
-      for (const suffix of [true, false]) {
+      for (const [symbol, digits] of endings) {
+        const number = digits ? (style === "dashes" ? "-" : "") + "\\d{4}" : "";
+        const format = new RegExp(`^${body[style]}${number}${symbol ? "[!@#$%^&*]" : ""}$`);
         for (const security of Object.keys(pw.SECURITY_BITS)) {
-          const phrase = pw.generatePassphrase({ security, method, style, suffix }, words);
-          assert.match(phrase, formats[style][suffix], `${method} ${style} ${suffix} ${security}`);
+          const phrase = pw.generatePassphrase({ security, method, style, symbol, digits }, words);
+          assert.match(phrase, format, `${method} ${style} ${symbol} ${digits} ${security}`);
         }
       }
     }
   }
+});
+
+test("command line", () => {
+  const { execFileSync } = require("node:child_process");
+  const run = (...args) => execFileSync(process.execPath, [path.join(__dirname, "pw.js"), "-n", "5", ...args],
+    { encoding: "utf8" }).trim().split("\n");
+  const all = (lines, re) => lines.forEach((line) => assert.match(line, re));
+  all(run(), /^[a-z]+(-[a-z]+){4}$/);                               // 5 dictionary words
+  all(run("-m", "phonetic", "--symbol"), /^[a-z]+(-[a-z]+)*[!@#$%^&*]$/);
+  all(run("--digits"), /^[a-z]+(-[a-z]+){3}-\d{4}$/);
+  all(run("--digits", "-t", "camel"), /^([A-Z][a-z]+){4}\d{4}$/);
+  all(run("--suffix", "-t", "camel"), /^([A-Z][a-z]+){4}\d{4}[!@#$%^&*]$/);
+  all(run("-m", "fantasy"), /^[a-z]+(-[a-z]+)*$/);                  // old name still works
+  for (const line of run("-m", "words")) assert.ok(line.split("-").every((w) => words.includes(w)));
 });
 
 test("the built page's script parses and its CSP pins the script and style", () => {

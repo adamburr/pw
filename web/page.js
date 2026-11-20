@@ -5,11 +5,15 @@ const form = document.getElementById("controls");
 const security = document.getElementById("security");
 const method = document.getElementById("method");
 const style = document.getElementById("style");
-const suffix = document.getElementById("suffix");
+const symbol = document.getElementById("symbol");
+const digits = document.getElementById("digits");
 const count = document.getElementById("count");
 const strength = document.getElementById("strength");
 const output = document.getElementById("output");
 const hint = document.getElementById("hint");
+
+// The hint under the strength, restored after "Copied to clipboard."
+let copyHint = "";
 
 async function copy(li) {
   const text = li.firstChild.textContent;
@@ -21,6 +25,7 @@ async function copy(li) {
     setTimeout(() => {
       li.classList.remove("copied");
       li.lastChild.textContent = "copy";
+      if (hint.textContent === "Copied to clipboard.") hint.textContent = copyHint;
     }, 1200);
   } catch {
     hint.textContent = "Couldn't access the clipboard — select the text to copy it.";
@@ -32,13 +37,10 @@ function render() {
     security: security.value,
     method: method.value,
     style: style.value,
-    suffix: suffix.value === "on",
+    symbol: symbol.checked,
+    digits: digits.checked,
   };
-  const info = partInfo(options.method, WORDS);
-  const n = partsNeeded(SECURITY_BITS[options.security], info.bits, options.suffix);
-  strength.textContent = describeStrength(n, info, options.suffix).text +
-    (options.style === "camel" && options.suffix ? "" :
-      ". For sites that require a capital letter, digit and symbol, choose CamelCase and an ending.");
+  strength.textContent = planPassphrase(options, WORDS).text;
 
   const total = Math.max(1, Math.min(200, parseInt(count.value, 10) || 20));
   count.value = total;
@@ -58,7 +60,13 @@ function render() {
     });
     output.append(li);
   }
-  hint.textContent = "Click a passphrase to copy it.";
+  // Choosing among the list by preference, rather than taking the first, can
+  // tell an attacker which of the total the passphrase is: up to log2(total) bits.
+  const cost = Math.log2(total);
+  copyHint = "Click a passphrase to copy it." + (total > 1
+    ? ` Picking a favorite from these ${total} can cost up to ${cost.toFixed(1)} bits of entropy.`
+    : "");
+  hint.textContent = copyHint;
 }
 
 // GitHub Pages can't send a frame-ancestors header, so refuse to run inside another site's frame.
@@ -66,6 +74,6 @@ if (window.top !== window.self) {
   document.querySelector("main").replaceChildren("Open pw directly at https://adamburr.github.io/pw/");
 } else {
   form.addEventListener("submit", (e) => { e.preventDefault(); render(); });
-  for (const control of [security, method, style, suffix]) control.addEventListener("change", render);
+  for (const control of [security, method, style, digits, symbol]) control.addEventListener("change", render);
   render();
 }

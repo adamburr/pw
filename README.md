@@ -2,12 +2,12 @@
 
 Generate secure, memorable passphrases from dictionary words, or from phonetic
 words made of English syllables, joined with dashes or in CamelCase, and
-optionally ending in a 4-digit number, a special character, or both:
+optionally ending in a number, a special character, or both:
 
 | Words      | Dashes (default)                   | CamelCase with digits and symbol |
 |------------|------------------------------------|----------------------------------|
-| Dictionary | `bitter-linear-fix-secondly-orbit` | `BitterLinearFixSecondly3951&`   |
-| Phonetic   | `brastoo-flimp-shayn-wex`          | `BrastooFlimpShayn4783#`         |
+| Dictionary | `bitter-linear-fix-secondly-orbit` | `BitterLinearFixSecondly395&`    |
+| Phonetic   | `brastoo-flimp-shayn-wex`          | `BrastooFlimpShayn478#`          |
 
 The defaults are dictionary words, lowercase with dashes, and no ending.
 
@@ -68,9 +68,11 @@ words or syllables (for phonetic words) as it takes to reach it:
 | `high`     | 77 bits | 6 (~83 bits) | 5 (~82 bits)        | 6 (~81 bits) | 5 (~81 bits)      |
 | `paranoid` | 90 bits | 7 (~97 bits) | 6 (~96 bits)        | 7 (~95 bits) | 6 (~94 bits)      |
 
-The 4-digit number carries about 13.3 bits, about as much as one word or
-syllable, so it takes the place of one. The symbol adds 3 bits on top of any of
-these but never saves a word or syllable.
+The number takes the place of one word or syllable. On its own it has 4 digits
+(~13.3 bits); with the symbol it has 3 (~10 bits), so the number and symbol
+together (~13 bits) are still about as strong as the word they replace, and the
+counts above don't change. The symbol alone adds 3 bits but never saves a word
+or syllable.
 
 ¹ Use `low` only for online accounts, where the site limits guessing. If a
 site's password database leaks, ~50 bits can be cracked offline.
@@ -81,8 +83,9 @@ an optional coda consonant. Each dictionary word comes from the `3esl` list in A
 of five learner's dictionaries), limited to the 14,631 lowercase words of 3 to 9
 letters. Every choice is uniform from a cryptographically secure RNG
 (`crypto.getRandomValues`). With dashes the parts stay lowercase; in CamelCase
-each part is capitalized. The optional ending is a 4-digit number, joined
-like another word, then one of `!@#$%^&*` with no dash before it. Some sites
+each part is capitalized. The optional ending is a number (4 digits, or 3
+with the symbol), joined like another word, then one of `!@#$%^&*` with no dash
+before it. Some sites
 require an uppercase letter, a digit and a special character; for those, use
 CamelCase with both.
 

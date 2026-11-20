@@ -41,9 +41,7 @@ function render() {
     digits: digits.checked,
   };
   const plan = planPassphrase(options, WORDS);
-  strength.textContent = plan.text +
-    (options.style === "camel" && options.symbol && options.digits ? "" :
-      ". For sites that require a capital letter, digit and symbol, choose CamelCase, Symbols and Digits.");
+  strength.textContent = plan.text;
 
   const total = Math.max(1, Math.min(200, parseInt(count.value, 10) || 20));
   count.value = total;

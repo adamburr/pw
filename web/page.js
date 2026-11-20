@@ -40,8 +40,7 @@ function render() {
     symbol: symbol.checked,
     digits: digits.checked,
   };
-  const plan = planPassphrase(options, WORDS);
-  strength.textContent = plan.text;
+  strength.textContent = planPassphrase(options, WORDS).text;
 
   const total = Math.max(1, Math.min(200, parseInt(count.value, 10) || 20));
   count.value = total;
@@ -65,8 +64,7 @@ function render() {
   // tell an attacker which of the total the passphrase is: up to log2(total) bits.
   const cost = Math.log2(total);
   copyHint = "Click a passphrase to copy it." + (total > 1
-    ? ` Picking a favorite from these ${total} can cost up to ` +
-      `${cost.toFixed(1)} bits, leaving ~${Math.round(plan.bits - cost)} bits.`
+    ? ` Picking a favorite from these ${total} can cost up to ${cost.toFixed(1)} bits of entropy.`
     : "");
   hint.textContent = copyHint;
 }

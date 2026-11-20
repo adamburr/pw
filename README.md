@@ -101,7 +101,7 @@ each closing symbol 3 bits and each digit about 3.3 bits, assuming an attacker
 knows exactly how passphrases are generated. The three empty codas produce the same text, so
 they count as one more likely choice rather than three. Picking a favorite from
 a list of N instead of the first one can cost up to log₂ N bits, about 4.3 bits
-for the default 20; the page shows what's left for the count you choose.
+for the default 20; the page shows the cost for the count you choose.
 
 ## Development
 

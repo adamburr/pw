@@ -164,14 +164,14 @@ function partInfo(method, words) {
 // The shape of a passphrase for options (see generatePassphrase): how many
 // syllables or words (n), with the endings options asks for, reach the
 // security level's minimum, the strength in bits, and a description like
-// "4 syllables + 4 digits + symbol: ~70 bits".
+// "4 syllables + 4 digits + symbol: ~70 bits of entropy".
 function planPassphrase(options, words) {
   const info = partInfo(options.method, words);
   const endBits = endingBits(options);
   const n = Math.max(1, Math.ceil((SECURITY_BITS[options.security] - endBits) / info.bits));
   const bits = n * info.bits + endBits;
   const ending = (options.digits ? ` + ${NUMBER_DIGITS} digits` : "") + (options.symbol ? " + symbol" : "");
-  const text = `${n} ${info.unit}${n > 1 ? "s" : ""}${ending}: ~${Math.round(bits)} bits`;
+  const text = `${n} ${info.unit}${n > 1 ? "s" : ""}${ending}: ~${Math.round(bits)} bits of entropy`;
   return { n, bits, text };
 }
 

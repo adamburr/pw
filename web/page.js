@@ -65,7 +65,7 @@ function render() {
   // tell an attacker which of the total the passphrase is: up to log2(total) bits.
   const cost = Math.log2(total);
   copyHint = "Click a passphrase to copy it." + (total > 1
-    ? ` Picking a favorite from these ${total} instead of the first can cost up to ` +
+    ? ` Picking a favorite from these ${total} can cost up to ` +
       `${cost.toFixed(1)} bits, leaving ~${Math.round(plan.bits - cost)} bits.`
     : "");
   hint.textContent = copyHint;
@@ -76,6 +76,6 @@ if (window.top !== window.self) {
   document.querySelector("main").replaceChildren("Open pw directly at https://adamburr.github.io/pw/");
 } else {
   form.addEventListener("submit", (e) => { e.preventDefault(); render(); });
-  for (const control of [security, method, style, symbol, digits]) control.addEventListener("change", render);
+  for (const control of [security, method, style, digits, symbol]) control.addEventListener("change", render);
   render();
 }

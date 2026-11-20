@@ -61,24 +61,15 @@ const SYLLABLE_BITS = entropy(ONSET_CONSONANTS) + entropy(NUCLEUS_VOWELS) + entr
 const SYMBOL_BITS = entropy(SPECIAL_CHARACTERS);
 const DIGIT_BITS = entropy([...DIGITS]);
 
-// How many special characters and digits end a passphrase: at least one of each
-// that options.symbol and options.digits ask for, and together carrying as
-// close as possible to partBits, the strength of one syllable or word, so the
-// ending stands in for one. Returns { symbols, digits, bits }.
-function endingSize(options, partBits) {
-  let best = { symbols: 0, digits: 0, bits: 0 };
-  if (!options.symbol && !options.digits) return best;
-  let bestGap = Infinity;
-  for (let symbols = options.symbol ? 1 : 0; symbols <= (options.symbol ? 8 : 0); symbols++) {
-    for (let digits = options.digits ? 1 : 0; digits <= (options.digits ? 8 : 0); digits++) {
-      const bits = symbols * SYMBOL_BITS + digits * DIGIT_BITS;
-      if (Math.abs(bits - partBits) < bestGap) {
-        bestGap = Math.abs(bits - partBits);
-        best = { symbols, digits, bits };
-      }
-    }
-  }
-  return best;
+// The optional endings: a 4-digit number, which takes the place of one word or
+// syllable (~13.3 bits, about as strong as one), and a single special character
+// (3 bits) at the very end.
+const NUMBER_DIGITS = 4;
+const NUMBER_BITS = NUMBER_DIGITS * DIGIT_BITS;
+
+// The bits the endings options asks for add.
+function endingBits(options) {
+  return (options.digits ? NUMBER_BITS : 0) + (options.symbol ? SYMBOL_BITS : 0);
 }
 
 // Uniform integer in [0, n) from the CSPRNG, using rejection sampling to avoid modulo bias.
@@ -100,13 +91,11 @@ function generateSyllable() {
   return [choice(ONSET_CONSONANTS), choice(NUCLEUS_VOWELS), choice(CODA_CONSONANTS)];
 }
 
-// The ending endingSize describes: its special characters, then its digits.
-// Empty if it has neither.
-function generateEnding(size) {
-  let ending = "";
-  for (let i = 0; i < size.symbols; i++) ending += choice(SPECIAL_CHARACTERS);
-  for (let i = 0; i < size.digits; i++) ending += choice(DIGITS);
-  return ending;
+// A 4-digit number, leading zeros included.
+function generateNumber() {
+  let number = "";
+  for (let i = 0; i < NUMBER_DIGITS; i++) number += choice(DIGITS);
+  return number;
 }
 
 // Whether text is exactly one onset, nucleus and coda.
@@ -173,19 +162,17 @@ function partInfo(method, words) {
 }
 
 // The shape of a passphrase for options (see generatePassphrase): how many
-// syllables or words (n) and what ending reach the security level's minimum,
-// the strength in bits, and a description like
-// "4 syllables + 1 symbol and 3 digits: ~67 bits".
+// syllables or words (n), with the endings options asks for, reach the
+// security level's minimum, the strength in bits, and a description like
+// "4 syllables + 4 digits + symbol: ~70 bits".
 function planPassphrase(options, words) {
   const info = partInfo(options.method, words);
-  const ending = endingSize(options, info.bits);
-  const n = Math.max(1, Math.ceil((SECURITY_BITS[options.security] - ending.bits) / info.bits));
-  const bits = n * info.bits + ending.bits;
-  const count = (k, unit) => `${k} ${unit}${k > 1 ? "s" : ""}`;
-  const endingText = [ending.symbols && count(ending.symbols, "symbol"),
-    ending.digits && count(ending.digits, "digit")].filter(Boolean).join(" and ");
-  const text = `${count(n, info.unit)}${endingText ? " + " + endingText : ""}: ~${Math.round(bits)} bits`;
-  return { n, ending, bits, text };
+  const endBits = endingBits(options);
+  const n = Math.max(1, Math.ceil((SECURITY_BITS[options.security] - endBits) / info.bits));
+  const bits = n * info.bits + endBits;
+  const ending = (options.digits ? ` + ${NUMBER_DIGITS} digits` : "") + (options.symbol ? " + symbol" : "");
+  const text = `${n} ${info.unit}${n > 1 ? "s" : ""}${ending}: ~${Math.round(bits)} bits`;
+  return { n, bits, text };
 }
 
 // Generates lowercase parts from n syllables or words: phonetic words
@@ -197,21 +184,22 @@ function generateParts(method, n, words) {
 }
 
 // Joins lowercase parts in CamelCase ("camel", like BrastooFlimp) or with dashes
-// ("dashes", like brastoo-flimp), appending the ending if there is one (after a
-// dash in the dashes style).
-function joinPassphrase(parts, style, ending) {
-  if (ending) parts = [...parts, ending];
-  return style === "camel"
+// ("dashes", like brastoo-flimp), then appends symbol (if any) with no dash.
+// A number can be one of the parts.
+function joinPassphrase(parts, style, symbol = "") {
+  return (style === "camel"
     ? parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join("")
-    : parts.join("-");
+    : parts.join("-")) + symbol;
 }
 
 // Generates one passphrase. options: security, method, style, symbol and
 // digits, as on the command line; words is the word list, needed only for the
 // dictionary method.
 function generatePassphrase(options, words) {
-  const { n, ending } = planPassphrase(options, words);
-  return joinPassphrase(generateParts(options.method, n, words), options.style, generateEnding(ending));
+  const { n } = planPassphrase(options, words);
+  const parts = generateParts(options.method, n, words);
+  if (options.digits) parts.push(generateNumber());
+  return joinPassphrase(parts, options.style, options.symbol ? choice(SPECIAL_CHARACTERS) : "");
 }
 
 // ---------------------------------------------------------------------------
@@ -221,8 +209,7 @@ const USAGE = `Usage: pw.js [options]
 
 Generate secure, memorable passphrases from dictionary words, or from phonetic
 words made of English syllables, joined with dashes or in CamelCase, optionally
-ending in special characters, digits, or both, about as strong as one more
-word or syllable.
+ending in a 4-digit number, a special character, or both.
 
 Options:
   -n, --count N        Number of passphrases to generate (default: 20)
@@ -233,11 +220,10 @@ Options:
                        words.txt; or phonetic, made-up words of one or two
                        syllables
   -t, --style S        dashes (default), lowercase joined with dashes; or camel
-      --symbol         End with special characters
-      --digits         End with digits (after the symbols, if any)
-      --suffix         Same as --symbol --digits
-                       The ending has as many of each as carry about the
-                       strength of one word or syllable, and replaces one
+      --digits         End with a 4-digit number, which takes the place of one
+                       word or syllable
+      --symbol         End with a special character (after the digits, if any)
+      --suffix         Same as --digits --symbol
   -v, --verbose        Print the passphrase strength to standard error
   -h, --help           Show this help
 `;
@@ -316,9 +302,9 @@ if (typeof module !== "undefined" && typeof require !== "undefined") {
   if (!globalThis.crypto) globalThis.crypto = require("node:crypto").webcrypto;
   module.exports = {
     ONSET_CONSONANTS, NUCLEUS_VOWELS, CODA_CONSONANTS, SPECIAL_CHARACTERS, DIGITS,
-    SECURITY_BITS, SYLLABLE_BITS, SYMBOL_BITS, DIGIT_BITS, entropy, endingSize,
+    SECURITY_BITS, SYLLABLE_BITS, SYMBOL_BITS, DIGIT_BITS, NUMBER_BITS, entropy, endingBits,
     isSyllable, canMerge, mergeSyllables, isValidWordList, partInfo, planPassphrase,
-    generateSyllable, generateEnding, generateParts,
+    generateSyllable, generateNumber, generateParts,
     joinPassphrase, generatePassphrase,
   };
   if (require.main === module) main(process.argv.slice(2));

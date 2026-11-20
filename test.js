@@ -25,15 +25,16 @@ test("strength per part", () => {
   assert.ok(Math.abs(pw.SYLLABLE_BITS - 13.5305) < 1e-4);
   assert.equal(pw.SYMBOL_BITS, 3);
   assert.ok(Math.abs(pw.DIGIT_BITS - 3.3219) < 1e-4);
+  assert.ok(Math.abs(pw.NUMBER_BITS - 13.2877) < 1e-4);
   assert.ok(pw.isValidWordList(words));
   assert.ok(Math.abs(pw.partInfo("dictionary", words).bits - Math.log2(words.length)) < 1e-9);
 });
 
 test("parts per security level match the README table", () => {
-  // For each method: no ending, then symbols only, digits only, and both,
-  // which each replace one part.
+  // For each method: no ending, then symbol only, digits only, and both. The
+  // digits replace one part; the symbol alone never does.
   const endings = [[false, false], [true, false], [false, true], [true, true]];
-  const expected = { low: [4, 3, 3, 3], medium: [5, 4, 4, 4], high: [6, 5, 5, 5], paranoid: [7, 6, 6, 6] };
+  const expected = { low: [4, 4, 3, 3], medium: [5, 5, 4, 4], high: [6, 6, 5, 5], paranoid: [7, 7, 6, 6] };
   for (const [security, counts] of Object.entries(expected)) {
     for (const method of ["phonetic", "dictionary"]) {
       const actual = endings.map(([symbol, digits]) => {
@@ -43,20 +44,6 @@ test("parts per security level match the README table", () => {
       });
       assert.deepEqual(actual, counts, `${security} ${method}`);
     }
-  }
-});
-
-test("endings carry about one part's strength", () => {
-  for (const method of ["phonetic", "dictionary"]) {
-    const partBits = pw.partInfo(method, words).bits;
-    const size = (symbol, digits) => {
-      const { symbols, digits: d } = pw.endingSize({ symbol, digits }, partBits);
-      return [symbols, d];
-    };
-    assert.deepEqual(size(false, false), [0, 0]);
-    assert.deepEqual(size(true, false), [5, 0], method);  // 15 bits
-    assert.deepEqual(size(false, true), [0, 4], method);  // ~13.3 bits
-    assert.deepEqual(size(true, true), [1, 3], method);   // ~13 bits
   }
 });
 
@@ -99,8 +86,8 @@ test("passphrase formats", () => {
   for (const method of ["phonetic", "dictionary"]) {
     for (const style of ["camel", "dashes"]) {
       for (const [symbol, digits] of endings) {
-        const ending = symbol && digits ? "[!@#$%^&*]\\d{3}" : symbol ? "[!@#$%^&*]{5}" : digits ? "\\d{4}" : "";
-        const format = new RegExp(`^${body[style]}${ending && (style === "dashes" ? "-" : "") + ending}$`);
+        const number = digits ? (style === "dashes" ? "-" : "") + "\\d{4}" : "";
+        const format = new RegExp(`^${body[style]}${number}${symbol ? "[!@#$%^&*]" : ""}$`);
         for (const security of Object.keys(pw.SECURITY_BITS)) {
           const phrase = pw.generatePassphrase({ security, method, style, symbol, digits }, words);
           assert.match(phrase, format, `${method} ${style} ${symbol} ${digits} ${security}`);
@@ -116,9 +103,10 @@ test("command line", () => {
     { encoding: "utf8" }).trim().split("\n");
   const all = (lines, re) => lines.forEach((line) => assert.match(line, re));
   all(run(), /^[a-z]+(-[a-z]+){4}$/);                               // 5 dictionary words
-  all(run("-m", "phonetic", "--symbol"), /^[a-z]+(-[a-z]+)*-[!@#$%^&*]{5}$/);
+  all(run("-m", "phonetic", "--symbol"), /^[a-z]+(-[a-z]+)*[!@#$%^&*]$/);
+  all(run("--digits"), /^[a-z]+(-[a-z]+){3}-\d{4}$/);
   all(run("--digits", "-t", "camel"), /^([A-Z][a-z]+){4}\d{4}$/);
-  all(run("--suffix", "-t", "camel"), /^([A-Z][a-z]+){4}[!@#$%^&*]\d{3}$/);
+  all(run("--suffix", "-t", "camel"), /^([A-Z][a-z]+){4}\d{4}[!@#$%^&*]$/);
   all(run("-m", "fantasy"), /^[a-z]+(-[a-z]+)*$/);                  // old name still works
   for (const line of run("-m", "words")) assert.ok(line.split("-").every((w) => words.includes(w)));
 });

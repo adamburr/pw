@@ -2,12 +2,12 @@
 
 Generate secure, memorable passphrases from dictionary words, or from phonetic
 words made of English syllables, joined with dashes or in CamelCase, and
-optionally ending in special characters, digits, or both:
+optionally ending in a 4-digit number, a special character, or both:
 
-| Words      | Dashes (default)                   | CamelCase with symbol and digits |
+| Words      | Dashes (default)                   | CamelCase with digits and symbol |
 |------------|------------------------------------|----------------------------------|
-| Dictionary | `bitter-linear-fix-secondly-orbit` | `BitterLinearFixSecondly&395`    |
-| Phonetic   | `brastoo-flimp-shayn-wex`          | `BrastooFlimpShayn#478`          |
+| Dictionary | `bitter-linear-fix-secondly-orbit` | `BitterLinearFixSecondly3951&`   |
+| Phonetic   | `brastoo-flimp-shayn-wex`          | `BrastooFlimpShayn4783#`         |
 
 The defaults are dictionary words, lowercase with dashes, and no ending.
 
@@ -49,9 +49,9 @@ The command line runs the same code as the page, with
 ./pw.js -s paranoid -n 5         # 5 passphrases at paranoid security
 ./pw.js -m phonetic              # phonetic words instead of dictionary words
 ./pw.js -t camel                 # CamelCase instead of dashes
-./pw.js --symbol                 # end with special characters
-./pw.js --digits                 # end with digits
-./pw.js -t camel --suffix        # end with both, same as --symbol --digits
+./pw.js --digits                 # end with a 4-digit number instead of a word
+./pw.js --symbol                 # end with a special character
+./pw.js -t camel --suffix        # end with both, same as --digits --symbol
 ./pw.js -m phonetic -v           # also print the strength to stderr
 ```
 
@@ -61,21 +61,16 @@ Dictionary mode reads `words.txt` from the same directory as `pw.js`. On Windows
 Each security level sets a minimum strength, and pw uses as many dictionary
 words or syllables (for phonetic words) as it takes to reach it:
 
-| Level      | Minimum | Dictionary   | Dictionary + ending | Phonetic     | Phonetic + ending |
+| Level      | Minimum | Dictionary   | Dictionary + digits | Phonetic     | Phonetic + digits |
 |------------|---------|--------------|---------------------|--------------|-------------------|
-| `low`¹     | 50 bits | 4 (~55 bits) | 3 (~54–57 bits)     | 4 (~54 bits) | 3 (~54–56 bits)   |
-| `medium`   | 63 bits | 5 (~69 bits) | 4 (~68–70 bits)     | 5 (~68 bits) | 4 (~67–69 bits)   |
-| `high`     | 77 bits | 6 (~83 bits) | 5 (~82–84 bits)     | 6 (~81 bits) | 5 (~81–83 bits)   |
-| `paranoid` | 90 bits | 7 (~97 bits) | 6 (~96–98 bits)     | 7 (~95 bits) | 6 (~94–96 bits)   |
+| `low`¹     | 50 bits | 4 (~55 bits) | 3 (~55 bits)        | 4 (~54 bits) | 3 (~54 bits)      |
+| `medium`   | 63 bits | 5 (~69 bits) | 4 (~69 bits)        | 5 (~68 bits) | 4 (~67 bits)      |
+| `high`     | 77 bits | 6 (~83 bits) | 5 (~82 bits)        | 6 (~81 bits) | 5 (~81 bits)      |
+| `paranoid` | 90 bits | 7 (~97 bits) | 6 (~96 bits)        | 7 (~95 bits) | 6 (~94 bits)      |
 
-An ending carries about as much as one word or syllable, so it takes the place
-of one:
-
-| Ending              | Example | Strength   |
-|---------------------|---------|------------|
-| Symbols only        | `#&!*^` | 15 bits    |
-| Digits only         | `4071`  | ~13.3 bits |
-| Symbols and digits  | `&395`  | ~13 bits   |
+The 4-digit number carries about 13.3 bits, about as much as one word or
+syllable, so it takes the place of one. The symbol adds 3 bits on top of any of
+these but never saves a word or syllable.
 
 ¹ Use `low` only for online accounts, where the site limits guessing. If a
 site's password database leaks, ~50 bits can be cracked offline.
@@ -86,10 +81,10 @@ an optional coda consonant. Each dictionary word comes from the `3esl` list in A
 of five learner's dictionaries), limited to the 14,631 lowercase words of 3 to 9
 letters. Every choice is uniform from a cryptographically secure RNG
 (`crypto.getRandomValues`). With dashes the parts stay lowercase; in CamelCase
-each part is capitalized. The optional ending is some of `!@#$%^&*`, some
-digits, or both, in that order; pw picks how many of each so the ending is as
-close as it can get to the strength of one word or syllable. Some sites require an uppercase letter, a digit
-and a special character; for those, use CamelCase with both.
+each part is capitalized. The optional ending is a 4-digit number, joined
+like another word, then one of `!@#$%^&*` with no dash before it. Some sites
+require an uppercase letter, a digit and a special character; for those, use
+CamelCase with both.
 
 Neighboring syllables are joined into two-syllable phonetic words where they're
 easy to say together: an open syllable is followed by anything but `w` or `y`, and a
